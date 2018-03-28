@@ -1,0 +1,8 @@
+A new game of Cthulhu has been created for this chat and is currently pending. 
+
+/joingame - join the game.
+/joingame nickname - joins the game under the name "nickname".
+/cancel - cancels this pending game.
+/startgame - starts the pending game.
+
+If you join the game, you must either message @cthulhu_game_bot or have messaged @cthulhu_game_bot in the past -- otherwise, you will not receive your role or hand!

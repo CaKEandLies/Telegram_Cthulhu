@@ -1,0 +1,9 @@
+Don't Mess with Cthulhu - Rules
+
+Don't Mess with Cthulhu is a social deduction game played over four rounds. Before the first round, each player is dealt a secret role as either an Investigator or a Cultist. The Investigators win instantly if they uncover all Elder Signs before the end of the fourth round. The Cultists win if the game ends without the Investigators winning or if, at any point, the Cthulhu card is investigated (turned face up).
+
+For a game with N players, the deck contains N Elder Sign cards. If fewer than nine players are playing, the deck will contain one Cthulhu card -- otherwise, it will contain two. The remaining cards are empty investigations (also called rocks).
+
+At the beginning of each round, all cards are dealt out evenly to players. At the beginning of the game, give the flashlight token to a random player -- after that, the flashlight begins each round with the player who last held it in the previous round. Starting with the flashlight holder and going around, each person declares what they have in their hand. Note that declarations do not have to be, and often are not, truthful. After declarations are finished, the person holding the flashlight may choose any other player to investigate. The player who is investigated reveals one of their cards and receives the flashlight. If Cthulhu is revealed, the cultists instantly win. An Elder Sign card counts towards the Investigators goals, while empty investigations do nothing. The card, once revealed, is set out of the game. Unless it is the end of the round (see below), the person holding the flashlight now moves as above.
+
+In a game with N players, the round lasts N investigations. After this, all unrevealed cards are returned facedown to the deck, which is shuffled and redealt to begin another round. The game ends when all Elder Signs are discovered, Cthulhu is discovered, or the fourth round is over.

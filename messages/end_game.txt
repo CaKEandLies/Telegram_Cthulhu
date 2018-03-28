@@ -1,0 +1,1 @@
+This game has been ended. To start a new game in this chat, use the command /newgame.

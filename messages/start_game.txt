@@ -1,0 +1,3 @@
+This game of Cthulhu has begun! After each investigation, an updated board will be displayed, including who has the flashlight.
+
+/investigate player -- investigates player. <player> can contain either the player's nickname or their position at the table.

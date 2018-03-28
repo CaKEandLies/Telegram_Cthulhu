@@ -1,0 +1,1 @@
+The pending game has been cancelled. Use /newgame to create a new game!
