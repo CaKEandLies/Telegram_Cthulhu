@@ -21,18 +21,17 @@ from telegram.ext import CommandHandler
 import logging
 import cthulhu_game as cg
 
-# Set up the bot and print out token info to ensure functionality.
-token = '529296289:AAG6DixRzzbWYJKxuiopyCaSYmLmvnv5-PY'
-bot = telegram.Bot(token=token)
-print(bot.get_me())
 
-# Create an updater to fetch updates.
-updater = Updater(token=token)
-dispatcher = updater.dispatcher
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)  # TODO: fix this line.
+### Generally useful functions.
+def read_message(filepath):
+    """
+    Opens and returns a text file as a string.
+    """
+    message = open(filepath, 'r').read()
+    return message
 
 
+### Non-game related commands.
 def start(bot, update):
     """
     Prints out a message detailing the functionality of this bot.
@@ -59,35 +58,17 @@ def rules(bot, update):
                      text=read_message('messages/rules.txt'))
 
 
-def wee(bot, update):
+def feedback(bot, update, args=None):
     """
-    Replies with a hoo command.
+    Records feedback.
+
+    TODO: Write this function.
     """
-    bot.send_message(chat_id=update.message.chat_id, text="/hoo")
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="This command is still being implemented!")
 
 
-def hoo(bot, update):
-    """
-    Replies with a wee command.
-    """
-    bot.send_message(chat_id=update.message.chat_id, text="/wee")
-
-
-def hi(bot, update):
-    """
-    Replies with a hi command.
-    """
-    bot.send_message(chat_id=update.message.chat_id, text="/hi")
-
-
-def read_message(filepath):
-    """
-    Opens and returns a text file as a string.
-    """
-    message = open(filepath, 'r').read()
-    return message
-
-
+### Game-organizational functions. 
 def new_game(bot, update, chat_data=None):
     """
     Starts a new game of Don't Mess with Cthulhu in the given chat.
@@ -127,7 +108,7 @@ def join_game(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="Game is full, sorry!")
         return
-    
+
     # Add this player to the list of pending players with a nickname.
     if args:
         nickname = args[0]
@@ -136,14 +117,15 @@ def join_game(bot, update, chat_data=None, args=None):
     user_id = update.message.from_user.id
     chat_data["pending_players"][user_id] = nickname
     bot.send_message(chat_id=update.message.chat_id,
-                     text="Registered under nickname %s!"%nickname)
+                     text="Registered under nickname %s!" % nickname)
 
 
 def start_game(bot, update, chat_data=None):
     """
     Starts the pending game.
-    
+
     #TODO: Fixes key error.
+    #TODO: Catch incorrect permissions error.
     """
     if "game_is_pending" not in chat_data:
         bot.send_message(chat_id=update.message.chat_id,
@@ -164,10 +146,22 @@ def start_game(bot, update, chat_data=None):
                          text="No game pending!")
 
 
+def end_game(bot, update, chat_data=None):
+    """
+    Ends any pending or ongoing game.
+    """
+    chat_data["game_is_pending"] = False
+    chat_data["game_is_ongoing"] = False
+    chat_data["game"] = None
+    chat_data["pending_players"] = {}
+    bot.send_message(chat_id=update.message.chat_id, text="ended!")
+
+
+### Gameplay-related functions.
 def claim(bot, update):
     """
     Allows players to declare their claims.
-    
+
     # TODO: Limit this to the player who can claim.
     # TODO: Write this function.
     """
@@ -192,32 +186,18 @@ def send_hands(bot, game):
     Sends hands to players in the game.
     """
     hands = game.get_hands()
-    print(hands)
     for user_id, hand in hands.items():
         bot.send_message(chat_id=user_id, text=("You have %s blanks, %s signs"
                                                 " and %s Cthulhus." % hand))
 
 
-def new_round(bot, game, chat_data):
-    """
-    Collects cards at the end of the round, reshuffles them, and redeals them.
-    """
-    discovered = chat_data["discovered_this_round"]
-    game.recollect_cards(discovered)
-    game.deal_cards()
-    send_hands(bot, game)
-    chat_data["discovered_this_round"] = []
-    chat_data["round_number"] = 1
-
-
 def begin_game(bot, game):
     """
-    Runs a game.
+    Sends out opening information.
     """
     send_roles(bot, game)
     game.deal_cards()
     send_hands(bot, game)
-    print(game.where_flashlight())
 
 
 def can_investigate(bot, user_id, game):
@@ -232,7 +212,7 @@ def investigate(bot, update, chat_data=None, args=None):
     Allows players to investigate others. Returns False on failure.
     # TODO: Write this function.
     # TODO: check if game is ongoing.
-    # TODO: clean up this entire fucking function. 
+    # TODO: clean up this entire fucking function.
     """
     if "game_is_ongoing" not in chat_data:
         bot.send_message(chat_id=update.message.chat_id, text="No game going!")
@@ -250,7 +230,7 @@ def investigate(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="You don't have the flashlight, dummy!")
         return False
-    name = args[0] 
+    name = args[0]
     pos = chat_data["game"].is_valid_name(name)
     if pos == -1:
         bot.send_message(chat_id=update.message.chat_id,
@@ -260,7 +240,7 @@ def investigate(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="You cannot investigate this player. Try again!")
         return False
-    
+
     result, end_of_round = chat_data["game"].investigate(pos)
     if "E" in result:
         bot.send_message(chat_id=update.message.chat_id,
@@ -279,7 +259,7 @@ def investigate(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id, text="Nothing...")
 
     if end_of_round:
-        bot.send_message(chat_id=update.message.chat_id, 
+        bot.send_message(chat_id=update.message.chat_id,
                          text="Round is over!")
         chat_data["round_number"] += 1
         if chat_data["round_number"] > 4:
@@ -291,6 +271,27 @@ def investigate(bot, update, chat_data=None, args=None):
                      text=chat_data["game"].display_board())
 
 
+### Hidden commands and other miscellany. 
+def wee(bot, update):
+    """
+    Replies with a hoo command.
+    """
+    bot.send_message(chat_id=update.message.chat_id, text="/hoo")
+
+
+def hoo(bot, update):
+    """
+    Replies with a wee command.
+    """
+    bot.send_message(chat_id=update.message.chat_id, text="/wee")
+
+
+def hi(bot, update):
+    """
+    Replies with a hi command.
+    """
+    bot.send_message(chat_id=update.message.chat_id, text="/hi")
+
 def send_dm(bot, update):
     """
     Sends a test message directly to the user.
@@ -299,42 +300,50 @@ def send_dm(bot, update):
                      text="sliding into those dungeon masters!")
 
 
-def end_game(bot, update, chat_data=None):
-    chat_data["game_is_pending"] = False
-    chat_data["game_is_ongoing"] = False
-    chat_data["game"] = None
-    chat_data["pending_players"] = {}
-    bot.send_message(chat_id=update.message.chat_id, text="ended!")
-  
+# Set up the bot.
+token = '529296289:AAG6DixRzzbWYJKxuiopyCaSYmLmvnv5-PY'
+bot = telegram.Bot(token=token)
 
-def cancel_game(bot, update, chat_data=None):
-    end_game(bot, update, chat_data=chat_data)
+# Create an updater to fetch updates.
+updater = Updater(token=token)
+dispatcher = updater.dispatcher
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
+                    '%(message)s', level=logging.INFO)
 
 
+# Logistical command handlers.
 start_handler = CommandHandler('start', start)
+rules_handler = CommandHandler('rules', rules)
+help_handler = CommandHandler('help', help_message)
+feedback_handler = CommandHandler('feedback', feedback)
+dispatcher.add_handler(start_handler)
+dispatcher.add_handler(rules_handler)
+dispatcher.add_handler(help_handler)
+dispatcher.add_handler(feedback_handler)
+
+# Handlers related to organizing a game.
+newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True)
+joingame_handler = CommandHandler('joingame', join_game, pass_chat_data=True,
+                                  pass_args=True)
+startgame_handler = CommandHandler('startgame', start_game,
+                                   pass_chat_data=True,)
+endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
+dispatcher.add_handler(newgame_handler)
+dispatcher.add_handler(joingame_handler)
+dispatcher.add_handler(startgame_handler)
+dispatcher.add_handler(endgame_handler)
+
+# Handlers for in-game commands.
+investigate_handler = CommandHandler('investigate', investigate,
+                                     pass_chat_data=True, pass_args=True)
+dispatcher.add_handler(investigate_handler)
+
+# Handlers for "hidden" commands.
 wee_handler = CommandHandler('wee', wee)
 hoo_handler = CommandHandler('hoo', hoo)
 hi_handler = CommandHandler('hi', hi)
 dm_handler = CommandHandler('send_dm', send_dm)
-rules_handler = CommandHandler('rules', rules)
-
-dispatcher.add_handler(start_handler)
 dispatcher.add_handler(wee_handler)
 dispatcher.add_handler(hoo_handler)
 dispatcher.add_handler(hi_handler)
 dispatcher.add_handler(dm_handler)
-dispatcher.add_handler(rules_handler)
-
-newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True)
-dispatcher.add_handler(newgame_handler)
-joingame_handler = CommandHandler('joingame', join_game, pass_chat_data=True,
-                                  pass_args=True)
-dispatcher.add_handler(joingame_handler)
-startgame_handler = CommandHandler('startgame', start_game,
-                                   pass_chat_data=True,)
-dispatcher.add_handler(startgame_handler)
-investigate_handler = CommandHandler('investigate', investigate, 
-                                     pass_chat_data=True, pass_args=True)
-dispatcher.add_handler(investigate_handler)
-endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
-dispatcher.add_handler(endgame_handler)
