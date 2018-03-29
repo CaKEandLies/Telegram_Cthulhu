@@ -302,7 +302,8 @@ def send_dm(bot, update):
 
 
 # Set up the bot.
-token = '529296289:AAG6DixRzzbWYJKxuiopyCaSYmLmvnv5-PY'
+# If you want to use this bot yourself, please message me directly.
+token = open('ignore/token.txt', 'r').read()
 bot = telegram.Bot(token=token)
 
 # Create an updater to fetch updates.
