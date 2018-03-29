@@ -298,9 +298,9 @@ class Game:
     player_8_roles = ["Investigator"] * 5 + ["Cultist"] * 3
     player_9_roles = ["Investigator"] * 6 + ["Cultist"] * 4
     player_10_roles = ["Investigator"] * 7 + ["Cultist"] * 4
-    ROLES = {4 : player_4_roles, 5 : player_5_roles, 6 : player_6_roles,
-             7 : player_7_roles, 8 : player_8_roles, 9 : player_9_roles,
-             10 : player_10_roles}
+    ROLES = {4: player_4_roles, 5: player_5_roles, 6: player_6_roles,
+             7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
+             10: player_10_roles}
 
     def __init__(self, players, game_id=0):
         """
@@ -371,9 +371,35 @@ class Game:
 
     def cultists_have_won(self):
         """
-        Returns whether cultists have won.
+        Returns whether cultists have won this round.
         """
         return "C" in self.moves
+
+    def is_valid_name(self, name):
+        """
+        Returns whether the name is a valid player.
+        """
+        print(name)
+        for i, player in enumerate(self.players):
+            if player.get_name().lower() in name.lower():
+                return i
+            elif i > 0 and str(i + 1) in name:
+                return i
+            elif i == 0 and "1" in name and "10" not in name:
+                return i
+        return -1
+
+    def get_position(self, player_id=None, name=None):
+        """
+        Gets the position of a player based on their name or id. Returns -1
+        if not found.
+        """
+        for i, player in enumerate(self.players):
+            if player_id == player.get_id():
+                return i
+            elif name == player.get_name():
+                return i
+        return -1
 
     def deal_cards(self):
         """
@@ -409,12 +435,12 @@ class Game:
             self.deal_cards()
             end_of_round = True
         return move, end_of_round
-    
+
     def take_move(self):
         """
         Takes a player to investigate via raw_input.
-        
-        # TODO: Obsolete
+
+        # Obsolete, except for text-based games.
         """
         move = input("Who do you want to investigate? \n")
         for i, player in enumerate(self.players):
@@ -428,32 +454,6 @@ class Game:
                     print("You can't investigate this player.")
         print("Looks like you entered invalid input. Please try again.")
 
-    def get_position(self, player_id = None, name = None):
-        """
-        Gets the position of a player based on their name or id. Returns -1
-        if not found.
-        """
-        for i, player in enumerate(self.players):
-            if player_id == player.get_id():
-                return i
-            elif name == player.get_name():
-                return i
-        return -1
-
-    def is_valid_name(self, name):
-        """
-        Returns whether the name is a valid player.
-        """
-        print(name)
-        for i, player in enumerate(self.players):
-            if player.get_name().lower() in name.lower():
-                return i
-            elif i > 0 and str(i + 1) in name:
-                return i
-            elif i == 0 and "1" in name and "10" not in name:
-                return i
-        return -1
-    
     def display_board(self):
         """
         Returns a nicely formatted version of the board as it is.
@@ -465,11 +465,11 @@ class Game:
             display += player.get_name()
             if self.flashlight == i:
                 display += " (🔦) "
-            display += " : " 
+            display += " : "
             display += player.display_hand()
             display += "\n"
         return display
-    
+
     def print_board(self):
         """
         Prints a simple representation of the board.
@@ -485,7 +485,7 @@ class Game:
         """
         self.deal_cards()
         self.print_board()
-        
+
         for i, player in enumerate(self.players):
             player.print_info()
 

@@ -1,0 +1,18 @@
+Basics:
+  /start - prints the startup message for this bot.
+  /help - this message.
+  /rules - rules for Don't Mess With Cthulhu.
+
+Administrating a game:
+  /newgame - creates a new pending game in this chat.
+  /joingame [nickname] - adds you to a pending game (if it exists) in the chat. If you entered a nickname, you will be registered under that. Otherwise, you will be registered under your first name on Telegram.
+  /startgame - starts the pending game with all players who have joined.
+  /endgame - ends any pending or ongoing game. 
+
+In-game:
+  /investigate [player] - investigates that player, revealing a random card from their hand. You can choose a player either by nickname or by position at the table.
+
+Other:
+  /feedback [feedback] - sends your feedback to the developer of this bot. 
+
+There are also a number of other commands this bot responds to. Try and find them!

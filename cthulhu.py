@@ -47,7 +47,8 @@ def help_message(bot, update):
 
     #TODO: write this function.
     """
-    pass
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=read_message('messages/help.txt'))
 
 
 def rules(bot, update):
