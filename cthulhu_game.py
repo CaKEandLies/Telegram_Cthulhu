@@ -11,7 +11,7 @@ and Cthulhu as "C".
 
 TODO:
     Implement a claims system.
-    Tidy up code.
+    Fix the is_valid_name function.
 """
 import random
 

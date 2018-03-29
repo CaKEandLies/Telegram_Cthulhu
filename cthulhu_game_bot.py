@@ -12,7 +12,8 @@ TODO:
     Write more detailed messages in response to commands.
     Write flavortext.
     Potentially implement a spectate command.
-    Rename both this module and the other.
+    Create an unjoin command.
+    Create a feedback command.
 """
 
 import telegram
@@ -36,8 +37,8 @@ def start(bot, update):
     """
     Prints out a message detailing the functionality of this bot.
     """
-    start_message = open('start.txt', 'r').read()
-    bot.send_message(chat_id=update.message.chat_id, text=start_message)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=read_message('messages/start.txt'))
 
 
 def help_message(bot, update):
