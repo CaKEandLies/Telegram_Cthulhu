@@ -1,0 +1,1 @@
+All players must have messaged @cthulhu_game_bot in the past for the game to start successfully. Please try the /startgame command again when this is true.

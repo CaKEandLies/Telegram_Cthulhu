@@ -1,7 +1,0 @@
-Hi! This bot can run Telegram-based games of Don't Mess with Cthulhu. To get started, add me to a chat and have everyone who wishes to play directly message me as well (@cthulhu_game_bot). If you don't know how to play, press /rules.
-
-Commands:
-/newgame - starts a new game of Don't Mess with Cthulhu.
-/rules - prints the rules for the game.
-/wee - hoo?
-/hoo - wee?

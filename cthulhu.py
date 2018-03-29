@@ -13,7 +13,6 @@ TODO:
     Write flavortext.
     Potentially implement a spectate command.
     Rename both this module and the other.
-    Put this on Github.
 """
 
 import telegram
@@ -55,8 +54,8 @@ def rules(bot, update):
     """
     Sends a message detailing the rules of the game.
     """
-    rules = open('rules.txt', 'r').read()
-    bot.send_message(chat_id=update.message.chat_id, text=rules)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=read_message('messages/rules.txt'))
 
 
 def wee(bot, update):
@@ -78,6 +77,14 @@ def hi(bot, update):
     Replies with a hi command.
     """
     bot.send_message(chat_id=update.message.chat_id, text="/hi")
+
+
+def read_message(filepath):
+    """
+    Opens and returns a text file as a string.
+    """
+    message = open(filepath, 'r').read()
+    return message
 
 
 def new_game(bot, update, chat_data=None):
@@ -224,6 +231,7 @@ def investigate(bot, update, chat_data=None, args=None):
     Allows players to investigate others. Returns False on failure.
     # TODO: Write this function.
     # TODO: check if game is ongoing.
+    # TODO: clean up this entire fucking function. 
     """
     if "game_is_ongoing" not in chat_data:
         bot.send_message(chat_id=update.message.chat_id, text="No game going!")
