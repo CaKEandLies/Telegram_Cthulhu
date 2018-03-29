@@ -8,7 +8,6 @@ This program implements a Telegram bot for games of Don't Mess With Cthulhu.
 
 TODO:
     Implement a claims system.
-    Ensure that investigators have the flashlight + are in the game.
     Implement a pending players command so that people can see who's signed up.
     Write more detailed messages in response to commands.
     Write flavortext.
@@ -17,11 +16,9 @@ TODO:
     Put this on Github.
 """
 
-import random
 import telegram
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
-from telegram.ext import MessageHandler, Filters
 import logging
 import cthulhu_game as cg
 
@@ -34,7 +31,7 @@ print(bot.get_me())
 updater = Updater(token=token)
 dispatcher = updater.dispatcher
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+                    level=logging.INFO)  # TODO: fix this line.
 
 
 def start(bot, update):
@@ -68,7 +65,7 @@ def wee(bot, update):
     """
     bot.send_message(chat_id=update.message.chat_id, text="/hoo")
 
-  
+
 def hoo(bot, update):
     """
     Replies with a wee command.
@@ -94,20 +91,20 @@ def new_game(bot, update, chat_data=None):
         chat_data["game_is_pending"] = True
         chat_data["pending_players"] = {}
         bot.send_message(chat_id=update.message.chat_id,
-                     text="Welcome to your first game! /joingame to join.")
+                         text="/joingame to join, /startgame to start.")
     else:
         if chat_data["game_is_ongoing"]:
             bot.send_message(chat_id=update.message.chat_id,
-                         text="There's already a game ongoing. /endgame?")
+                             text="There's already a game ongoing. /endgame?")
         elif chat_data["game_is_pending"]:
             bot.send_message(chat_id=update.message.chat_id,
-                         text="There's already a game pending. /cancel?")
+                             text="There's already a game pending. /endgame?")
         else:
             chat_data["pending_players"] = {}
             chat_data["game_is_pending"] = True
             chat_data["game_is_ongoing"] = False
             bot.send_message(chat_id=update.message.chat_id,
-                         text="/joingame to join, /startgame to start.")
+                             text="/joingame to join, /startgame to start.")
 
 
 def join_game(bot, update, chat_data=None, args=None):
@@ -202,6 +199,7 @@ def new_round(bot, game, chat_data):
     game.deal_cards()
     send_hands(bot, game)
     chat_data["discovered_this_round"] = []
+    chat_data["round_number"] = 1
 
 
 def begin_game(bot, game):
@@ -211,13 +209,13 @@ def begin_game(bot, game):
     send_roles(bot, game)
     game.deal_cards()
     send_hands(bot, game)
+    print(game.where_flashlight())
 
 
 def can_investigate(bot, user_id, game):
     """
     Checks whether the user at that id can investigate others.
     """
-    assert game.get_position(player_id=user_id) != -1
     return game.get_position(player_id=user_id) == game.where_flashlight()
 
 
@@ -227,14 +225,22 @@ def investigate(bot, update, chat_data=None, args=None):
     # TODO: Write this function.
     # TODO: check if game is ongoing.
     """
-    if len(args[0]) < 1:
+    if "game_is_ongoing" not in chat_data:
+        bot.send_message(chat_id=update.message.chat_id, text="No game going!")
+        return False
+    elif not chat_data["game_is_ongoing"]:
+        bot.send_message(chat_id=update.message.chat_id, text="No game going!")
+        return False
+    if len(args) < 1:
         bot.send_message(chat_id=update.message.chat_id,
                          text="Format: '/investigate name' "
                          " Want to try that again?")
+        return False
     if not can_investigate(bot, update.message.from_user.id,
                            chat_data["game"]):
-        bot.send_message(chat_id=upate.message.chat_id,
+        bot.send_message(chat_id=update.message.chat_id,
                          text="You don't have the flashlight, dummy!")
+        return False
     name = args[0] 
     pos = chat_data["game"].is_valid_name(name)
     if pos == -1:
@@ -263,12 +269,17 @@ def investigate(bot, update, chat_data=None, args=None):
     elif "-" in result:
         bot.send_message(chat_id=update.message.chat_id, text="Nothing...")
 
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=chat_data["game"].display_board())
     if end_of_round:
         bot.send_message(chat_id=update.message.chat_id, 
-                         text="Round is over")
+                         text="Round is over!")
+        chat_data["round_number"] += 1
+        if chat_data["round_number"] > 4:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="Cultists win by default!")
+            return True
         send_hands(bot, chat_data["game"])
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=chat_data["game"].display_board())
 
 
 def send_dm(bot, update):
@@ -284,6 +295,7 @@ def end_game(bot, update, chat_data=None):
     chat_data["game_is_ongoing"] = False
     chat_data["game"] = None
     chat_data["pending_players"] = {}
+    bot.send_message(chat_id=update.message.chat_id, text="ended!")
   
 
 def cancel_game(bot, update, chat_data=None):
@@ -316,3 +328,4 @@ investigate_handler = CommandHandler('investigate', investigate,
                                      pass_chat_data=True, pass_args=True)
 dispatcher.add_handler(investigate_handler)
 endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
+dispatcher.add_handler(endgame_handler)

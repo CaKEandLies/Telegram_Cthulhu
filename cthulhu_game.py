@@ -6,6 +6,9 @@ Created on Thu Mar 22 11:18:11 2018
 
 This module implements classes needed for a game of Cthulhu.
 
+Throughout the module, an Elder Sign is represented as "E", a blank as "-",
+and Cthulhu as "C".
+
 TODO:
     Implement a claims system.
     Tidy up code.
@@ -19,8 +22,8 @@ class Player:
 
     Attributes:
         name - A player name.
-        has_flashlight - Does the player have the flashlight.
-        is_cultist - Is the player a cultist.
+        has_flashlight - Does the player have the flashlight?
+        is_cultist - Is the player a cultist?
         hand - The player's current hand.
         player_id - An id corresponding to this player.
 
@@ -34,10 +37,13 @@ class Player:
         self.name = name
         self.has_flashlight = has_flashlight
         self.is_cultist = is_cultist
-        self.hand = None
+        self.hand = Hand([])
         self.id = player_id
 
     def __str__(self):
+        """
+        Returns the players name.
+        """
         return self.name
 
     def get_name(self):
@@ -50,13 +56,20 @@ class Player:
         """
         Returns the contents of the players' hands as a tuple of (-, E, C).
 
-        Raises:
-            ValueError: If the players' hand is not yet assigned.
+        Unlike display_hand, this returns an omniscient summary of what's in
+        the player's hand.
         """
-        if not isinstance(self.hand, Hand):
-            raise ValueError("Hand for this player is not assigned!")
         return (self.hand.get_blank(), self.hand.get_elder(),
                 self.hand.get_cthulhu())
+
+    def display_hand(self):
+        """
+        Returns the hand as it should be displayed.
+
+        Unlike get_hand, this accounts for which cards have already been
+        revealed.
+        """
+        return self.hand.get_contents()
 
     def get_id(self):
         """
@@ -70,23 +83,29 @@ class Player:
         """
         return self.is_cultist
 
-    def can_be_investigated(self):
-        """
-        Return whether this player can be investigated.
-        """
-        return (self.hand.can_pick_card() and (not self.has_flashlight))
-
     def set_hand(self, hand):
         """
         Sets the player's hand.
+
+        @param hand - a Hand object representing the player's hand.
+
+        @raises TypeError - if the parameter submitted is not of type Hand.
         """
         if not isinstance(hand, Hand):
             raise TypeError("Argument must be of type Hand.")
         self.hand = hand
 
-    def be_investigated(self):
+    def can_be_investigated(self):
         """
-        Sets has_flashlight to True and returns top card.
+        Returns whether this player can be investigated.
+        """
+        return (self.hand.can_pick_card() and (not self.has_flashlight))
+
+    def _be_investigated(self):
+        """
+        Sets has_flashlight to True and returns an unrevealed card from hand.
+
+        This method should only be called by investigate.
         """
         self.has_flashlight = True
         return self.hand.pick_card()
@@ -94,15 +113,11 @@ class Player:
     def investigate(self, player):
         """
         Investigates another player, revealing a card, and reveals the result.
+
+        #TODO: Raise exception if player does not have flashlight.
         """
         self.has_flashlight = False
-        return player.be_investigated()
-
-    def display_hand(self):
-        """
-        Returns the hand.
-        """
-        return self.hand.get_contents()
+        return player._be_investigated()
 
 
 class Hand:
@@ -115,44 +130,25 @@ class Hand:
         cthulhu - Number of cthulhus.
         picked - Number of times this hand has been picked in this round.
     """
-    def __init__(self, blanks, elder, cthulhu):
-        """
-        Initializes a hand.
-
-        @param blanks - the number of blank cards in the hand.
-        @param elder - the number of elder signs in the hand.
-        @param cthulhu - the number of cthulus in the hand.
-        """
-        self.blank = blanks
-        self.elder = elder
-        self.cthulhu = cthulhu
-        self.picked = 0
-        self.contents = ["-"] * blanks + ["E"] * elder + ["C"] * cthulhu
-        # Shuffle the contents of hands so drawing is random.
-        random.shuffle(self.contents)
 
     def __init__(self, contents):
         """
         Initializes a hand given a list of contents.
 
-        @param contents - a list with comma-separated contents
+        @param contents - a list with comma-separated contents.
 
-        @raises - if unknown element.
+        @raises ValueError - if unknown element.
         """
-        blanks, elders, cthulhus = 0, 0, 0
         for element in contents:
             if "-" in element:
-                blanks += 1
+                self.blank += 1
             elif "E" in element:
-                elders += 1
+                self.elder += 1
             elif "C" in element:
-                cthulhus += 1
+                self.cthulhu += 1
             else:
-                raise("Unrecognized card!")
-        self.blank = blanks
-        self.cthulhu = cthulhus
-        self.elder = elders
-
+                raise ValueError("Unrecognized card!")
+        # Shuffle contents of hand.
         self.picked = 0
         self.contents = []
         for element in contents:
@@ -170,7 +166,7 @@ class Hand:
         Returns the number of elder signs in the hand.
         """
         return self.elder
-    
+
     def get_cthulhu(self):
         """
         Returns the number of cthulhus in the hand.
@@ -182,19 +178,7 @@ class Hand:
         Returns whether a card can be picked.
         """
         return self.picked < len(self.contents)
-    
-    def pick_card(self):
-        """
-        Picks a card from this hand and returns the value.
 
-        @return - Returns a string containing the contents of the card.
-
-        @raises - AssertionError if the hand has already been picked through.
-        """
-        assert self.picked < len(self.contents)
-        self.picked += 1
-        return self.contents[self.picked - 1]
-    
     def get_contents(self):
         """
         Returns nicely-formatted contents of the hand, keeping in mind reveals.
@@ -212,6 +196,19 @@ class Hand:
                 hand += "⚫"
         return hand
 
+    def pick_card(self):
+        """
+        Picks a card from this hand and returns the value.
+
+        @return - Returns a string containing the contents of the card.
+
+        @raises - AssertionError if the hand has already been picked through.
+        """
+        if self.picked < len(self.contents):
+            raise Exception("You can't pick a card from this hand!")
+        self.picked += 1
+        return self.contents[self.picked - 1]
+
 
 class Deck:
     """
@@ -226,14 +223,15 @@ class Deck:
 
     def __init__(self, num_players):
         """
-        Updates instance attributes based on number of players.
-        
-        @raises - AssertionError if number of players exceeds 11.
+        initializes  deck for the given number of players.
+
+        @raises AssertionError - if number of players isn't 4-10.
         """
         self.round_count = 0
         self.signs = num_players
+        if num_players > 10 or num_players < 4:
+            raise Exception("Incorrect number of players!")
         if (num_players > 8):
-            assert num_players < 11
             self.cthulhus = 2
         else:
             self.cthulhus = 1
@@ -262,10 +260,11 @@ class Deck:
         """
         Updates the deck based on which cards were revealed this turn.
 
-        @raise - AssertionError if incorrect number of cards removed
-        @raise - if unrecognized card.
+        @raise Warning - if incorrect number of cards removed
+        @raise Exception - if unrecognized card.
         """
-        assert len(removed) == self.num_players
+        if not len(removed) == self.num_players:
+            raise Warning("Incorrect number of cards removed!")
         for card in removed:
             if "-" in card:
                 self.blanks -= 1
@@ -274,7 +273,7 @@ class Deck:
             elif "C" in card:
                 self.cthulhus -= 1
             else:
-                raise("Unrecognized card!")
+                raise Exception("Unrecognized card!")
 
 
 class Game:
@@ -282,16 +281,16 @@ class Game:
     A game of Don't Mess with Cthulhu.
 
     Attributes:
-        players - A list of players in the game. 
+        players - A list of players in the game.
         round_counter - Number of rounds that have passed.
         deck - A deck of cards representing the game.
         signs_remaining - Number of Elder Signs remaining.
-        flashlight - An index of the player who has the flashlight.
-        
-    #TODO: Remove player_1_roles.
+        flashlight - The index of the player who has the flashlight.
+
+    TODO:
+        Fix off-by-one errors, potentially.
+        Implement a system for claiming.
     """
-    player_1_roles = ["Investigator"] + ["Cultist"]
-    player_2_roles = ["Investigator"] + ["Cultist"]
     player_4_roles = ["Investigator"] * 3 + ["Cultist"] * 2
     player_5_roles = ["Investigator"] * 4 + ["Cultist"] * 2
     player_6_roles = ["Investigator"] * 4 + ["Cultist"] * 2
@@ -299,67 +298,41 @@ class Game:
     player_8_roles = ["Investigator"] * 5 + ["Cultist"] * 3
     player_9_roles = ["Investigator"] * 6 + ["Cultist"] * 4
     player_10_roles = ["Investigator"] * 7 + ["Cultist"] * 4
-    ROLES = {1 : player_1_roles, 4 : player_4_roles, 5 : player_5_roles, 6 : player_6_roles,
+    ROLES = {4 : player_4_roles, 5 : player_5_roles, 6 : player_6_roles,
              7 : player_7_roles, 8 : player_8_roles, 9 : player_9_roles,
              10 : player_10_roles}
 
     def __init__(self, players, game_id=0):
         """
         Initializes a game of Don't Mess With Cthulhu given player names.
-        
+
         @param players - A dictionary of player ids: nicknames
-        
-        @raises - AssertionError if too many players.
+
+        @raises Exception - if incorrect number of players.
         """
         num = len(players)
-        assert num < 11
+        if num > 10 or num < 4:
+            raise Exception("Incorrect number of players!")
 
         roles = self.ROLES[num]
         random.shuffle(roles)
-        starting = random.randint(0, num)
-        
+        starting = random.randint(0, num-1)
+
         self.players = []
         position = 0
-        1
         for user_id, name in players.items():
             # Initialize a player for each in the list.
-            self.players.append(Player(name, position==starting,
+            self.players.append(Player(name, position == starting,
                                        "Cultist" in roles[position],
                                        player_id=user_id))
             position += 1
-        
+
         self.flashlight = starting
         self.deck = Deck(num)
         self.signs_remaining = num
         self.game_id = game_id
         self.moves = []
 
-    def get_info(self):
-        """
-        Returns a dictionary of player ids and info.
-
-        # Obsolete.
-        """
-        info = {}
-        for player in self.players:
-            info[player.get_id()] = player.get_info()
-  
-    def deal_cards(self):
-        """
-        Deals out cards to players.
-        """
-        hands = self.deck.deal()
-        for i in range(len(self.players)):
-            self.players[i].set_hand(hands[i])
-            
-    def recollect_cards(self):
-        """
-        Recollects the cards from a round.
-        """
-        assert len(self.moves) == len(self.players)
-        self.deck.return_cards(self.moves)
-        self.moves = []
-        
     def get_roles(self):
         """
         Returns a dictionary of player ids and roles.
@@ -368,7 +341,7 @@ class Game:
         for player in self.players:
             roles[player.get_id()] = player.get_is_cultist()
         return roles
-    
+
     def get_hands(self):
         """
         Returns a dictionary of player ids and hands.
@@ -378,18 +351,46 @@ class Game:
             hands[player.get_id()] = player.get_hand()
         return hands
 
-    def print_board(self):
-        """
-        Prints a simple representation of the board.
-        """
-        for i in range(len(self.players)):
-            print(str(i + 1), ":", self.players[i].get_name(),
-                  self.players[i].display_hand())
-        print("Flashlight is with player", self.flashlight + 1)
-
     def can_investigate_position(self, position):
+        """
+        Returns whether the player at position can be investigated.
+        """
         return self.players[position].can_be_investigated()
-    
+
+    def where_flashlight(self):
+        """
+        Returns the position of the flashlight.
+        """
+        return self.flashlight
+
+    def investigators_have_won(self):
+        """
+        Returns whether the investigators have won the game.
+        """
+        return self.signs_remaining < 1
+
+    def cultists_have_won(self):
+        """
+        Returns whether cultists have won.
+        """
+        return "C" in self.moves
+
+    def deal_cards(self):
+        """
+        Deals out cards to players.
+        """
+        hands = self.deck.deal()
+        for i in range(len(self.players)):
+            self.players[i].set_hand(hands[i])
+
+    def recollect_cards(self):
+        """
+        Recollects the cards from a round.
+        """
+        assert len(self.moves) == len(self.players)
+        self.deck.return_cards(self.moves)
+        self.moves = []
+
     def investigate(self, position):
         """
         Investigate the player at position position.
@@ -400,8 +401,11 @@ class Game:
         move = self.players[temp].investigate(self.players[position])
         self.moves.append(move)
         end_of_round = False
+        if "E" in move:
+            self.signs_remaining -= 1
         if len(self.moves) >= len(self.players):
-            self.recollect_cards(self.moves)
+            print(self.moves)
+            self.recollect_cards()
             self.deal_cards()
             end_of_round = True
         return move, end_of_round
@@ -435,26 +439,14 @@ class Game:
             elif name == player.get_name():
                 return i
         return -1
-    
-    def where_flashlight(self):
-        return self.flashlight
-    
-    def investigators_have_won(self):
-        """
-        Returns whether the investigators have won the game.
-        """
-        return self.signs_remaining < 1
-    
-    def cultists_have_won(self):
-        """
-        Returns whether cultists have won.
-        """
-        return "C" in self.moves
-    
+
     def is_valid_name(self, name):
+        """
+        Returns whether the name is a valid player.
+        """
         print(name)
         for i, player in enumerate(self.players):
-            if player.get_name() in name:
+            if player.get_name().lower() in name.lower():
                 return i
             elif i > 0 and str(i + 1) in name:
                 return i
@@ -478,6 +470,15 @@ class Game:
             display += "\n"
         return display
     
+    def print_board(self):
+        """
+        Prints a simple representation of the board.
+        """
+        for i in range(len(self.players)):
+            print(str(i + 1), ":", self.players[i].get_name(),
+                  self.players[i].display_hand())
+        print("Flashlight is with player", self.flashlight + 1)
+
     def do_test_round(self):
         """
         Does a simple test round, displaying everything.
