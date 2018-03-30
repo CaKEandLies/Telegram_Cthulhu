@@ -16,7 +16,6 @@ This bot runs simple text-based games of Cthulhu online.
 
 Commands and other upcoming features!
  - A more official claims system.
- - A /feedback command.
  - A /pendingplayers command to view all pending players.
  - An /unjoin command.
  - Potentially a system for players to spectate.
