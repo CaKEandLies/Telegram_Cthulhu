@@ -470,6 +470,7 @@ class Game:
             display += " : "
             display += player.display_hand()
             display += "\n"
+        display += "Elder Signs remaining: %s" % self.signs_remaining
         return display
 
     def print_board(self):
