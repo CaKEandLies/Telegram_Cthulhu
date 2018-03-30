@@ -66,12 +66,12 @@ def feedback(bot, update, args=None):
     TODO: Write this function.
     """
     if len(args) > 0:
-        feedback = open("feedback.txt", "a")
+        feedback = open("ignore/feedback.txt", "a")
         feedback.write("\n")
         feedback.write(update.message.from_user.first_name)
         feedback.write("\n")
         # Records User ID so that if feature is implemented, can message them
-        # about it. 
+        # about it.
         feedback.write(str(update.message.from_user.id))
         feedback.write("\n")
         feedback.write(" ".join(args))
@@ -140,27 +140,37 @@ def start_game(bot, update, chat_data=None):
     """
     Starts the pending game.
 
-    #TODO: Fixes key error.
     #TODO: Catch incorrect permissions error.
     """
+    # Check that a game with enough players is pending. 
     if "game_is_pending" not in chat_data:
         bot.send_message(chat_id=update.message.chat_id,
                          text="No game pending!")
-    if chat_data["game_is_pending"]:
-        if len(chat_data["pending_players"]) < 4:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Not enough players yet!")
-        else:
-            chat_data["game_is_ongoing"] = True
-            chat_data["game_is_pending"] = False
-            chat_data["game"] = cg.Game(chat_data["pending_players"])
-            begin_game(bot, chat_data["game"])
-            chat_data["round_number"] = 1
-            bot.send_message(chat_id=update.message.chat_id,
-                             text=chat_data["game"].display_board())
-    else:
+        return
+    if not chat_data["game_is_pending"]:
         bot.send_message(chat_id=update.message.chat_id,
                          text="No game pending!")
+        return
+    if len(chat_data["pending_players"]) < 4:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Not enough players yet!")
+        return
+    try:
+        for user_id, nickname in chat_data["pending_players"]:
+            bot.send_message(chat_id=user_id, text="Trying to start game!")
+    except Exception as e:  # TODO: FIX this
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=read_message('messages/start_game_failure.txt'))
+        return
+    else:
+        chat_data["game_is_ongoing"] = True
+        chat_data["game_is_pending"] = False
+        chat_data["game"] = cg.Game(chat_data["pending_players"])
+        begin_game(bot, chat_data["game"])
+        chat_data["round_number"] = 1
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=chat_data["game"].display_board())
+        
 
 
 def end_game(bot, update, chat_data=None):
@@ -171,7 +181,8 @@ def end_game(bot, update, chat_data=None):
     chat_data["game_is_ongoing"] = False
     chat_data["game"] = None
     chat_data["pending_players"] = {}
-    bot.send_message(chat_id=update.message.chat_id, text="ended!")
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=read_message('messages/end_game.txt'))
 
 
 ### Gameplay-related functions.
@@ -227,9 +238,7 @@ def can_investigate(bot, user_id, game):
 def investigate(bot, update, chat_data=None, args=None):
     """
     Allows players to investigate others. Returns False on failure.
-    # TODO: Write this function.
-    # TODO: check if game is ongoing.
-    # TODO: clean up this entire fucking function.
+    # TODO: split this function.
     """
     if "game_is_ongoing" not in chat_data:
         bot.send_message(chat_id=update.message.chat_id, text="No game going!")
