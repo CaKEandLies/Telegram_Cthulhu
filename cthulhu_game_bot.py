@@ -21,6 +21,7 @@ from telegram.ext import Updater
 from telegram.ext import CommandHandler
 import logging
 import cthulhu_game as cg
+from telegram.error import Unauthorized
 
 
 ### Generally useful functions.
@@ -134,6 +135,27 @@ def join_game(bot, update, chat_data=None, args=None):
     chat_data["pending_players"][user_id] = nickname
     bot.send_message(chat_id=update.message.chat_id,
                      text="Registered under nickname %s!" % nickname)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="Current player count: "
+                     "%s" % len(chat_data["pending_players"]))
+
+
+def pending_players(bot, update, chat_data=None):
+    """
+    Lists all players for the pending game of Cthulhu.
+    """
+    if "game_is_pending" not in chat_data:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="No game pending!")
+        return
+    elif not chat_data["game_is_pending"]:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="No game pending!")
+        return
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="Current list of pending players: ")
+    for user_id, name in chat_data["pending_players"].items():
+        bot.send_message(chat_id=update.message.chat_id, text=name)
 
 
 def start_game(bot, update, chat_data=None):
@@ -156,9 +178,9 @@ def start_game(bot, update, chat_data=None):
                          text="Not enough players yet!")
         return
     try:
-        for user_id, nickname in chat_data["pending_players"]:
+        for user_id, nickname in chat_data["pending_players"].items():
             bot.send_message(chat_id=user_id, text="Trying to start game!")
-    except Exception as e:  # TODO: FIX this
+    except Unauthorized as unauth:
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/start_game_failure.txt'))
         return
@@ -352,11 +374,14 @@ dispatcher.add_handler(feedback_handler)
 newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True)
 joingame_handler = CommandHandler('joingame', join_game, pass_chat_data=True,
                                   pass_args=True)
+pending_handler = CommandHandler('pendingplayers', pending_players,
+                                 pass_chat_data=True)
 startgame_handler = CommandHandler('startgame', start_game,
                                    pass_chat_data=True,)
 endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
 dispatcher.add_handler(newgame_handler)
 dispatcher.add_handler(joingame_handler)
+dispatcher.add_handler(pending_handler)
 dispatcher.add_handler(startgame_handler)
 dispatcher.add_handler(endgame_handler)
 
