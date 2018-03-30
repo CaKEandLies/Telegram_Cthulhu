@@ -21,3 +21,5 @@ Commands and other upcoming features!
  - An /unjoin command.
  - Potentially a system for players to spectate.
  - Flavortext!
+ - Some bug fixes.
+ - A way to see investigator progress.
