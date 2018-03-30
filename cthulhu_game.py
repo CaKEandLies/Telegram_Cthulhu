@@ -139,6 +139,9 @@ class Hand:
 
         @raises ValueError - if unknown element.
         """
+        self.blank = 0
+        self.elder = 0
+        self.cthulhu = 0
         for element in contents:
             if "-" in element:
                 self.blank += 1
@@ -181,7 +184,7 @@ class Hand:
 
     def get_contents(self):
         """
-        Returns nicely-formatted contents of the hand, keeping in mind reveals.
+        Returns nicely-formatted contecannts of the hand, keeping in mind reveals.
         """
         hand = ""
         for i, card in enumerate(self.contents):
@@ -204,7 +207,7 @@ class Hand:
 
         @raises - AssertionError if the hand has already been picked through.
         """
-        if self.picked < len(self.contents):
+        if self.picked > len(self.contents):
             raise Exception("You can't pick a card from this hand!")
         self.picked += 1
         return self.contents[self.picked - 1]
@@ -379,7 +382,6 @@ class Game:
         """
         Returns whether the name is a valid player.
         """
-        print(name)
         for i, player in enumerate(self.players):
             if player.get_name().lower() in name.lower():
                 return i

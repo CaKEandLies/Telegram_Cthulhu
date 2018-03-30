@@ -65,8 +65,23 @@ def feedback(bot, update, args=None):
 
     TODO: Write this function.
     """
-    bot.send_message(chat_id=update.message.chat_id,
-                     text="This command is still being implemented!")
+    if len(args) > 0:
+        feedback = open("feedback.txt", "a")
+        feedback.write("\n")
+        feedback.write(update.message.from_user.first_name)
+        feedback.write("\n")
+        # Records User ID so that if feature is implemented, can message them
+        # about it. 
+        feedback.write(str(update.message.from_user.id))
+        feedback.write("\n")
+        feedback.write(" ".join(args))
+        feedback.write("\n")
+        feedback.close()
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Thanks for the feedback!")
+    else:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Format: /feedback [feedback]")
 
 
 ### Game-organizational functions. 
@@ -132,7 +147,7 @@ def start_game(bot, update, chat_data=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="No game pending!")
     if chat_data["game_is_pending"]:
-        if len(chat_data["pending_players"]) < 1:
+        if len(chat_data["pending_players"]) < 4:
             bot.send_message(chat_id=update.message.chat_id,
                              text="Not enough players yet!")
         else:
@@ -140,6 +155,7 @@ def start_game(bot, update, chat_data=None):
             chat_data["game_is_pending"] = False
             chat_data["game"] = cg.Game(chat_data["pending_players"])
             begin_game(bot, chat_data["game"])
+            chat_data["round_number"] = 1
             bot.send_message(chat_id=update.message.chat_id,
                              text=chat_data["game"].display_board())
     else:
@@ -317,7 +333,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
 start_handler = CommandHandler('start', start)
 rules_handler = CommandHandler('rules', rules)
 help_handler = CommandHandler('help', help_message)
-feedback_handler = CommandHandler('feedback', feedback)
+feedback_handler = CommandHandler('feedback', feedback, pass_args=True)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(rules_handler)
 dispatcher.add_handler(help_handler)
