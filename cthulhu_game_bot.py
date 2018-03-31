@@ -140,6 +140,24 @@ def join_game(bot, update, chat_data=None, args=None):
                      "%s" % len(chat_data["pending_players"]))
 
 
+def unjoin(bot, update, chat_data=None):
+    if "game_is_pending" not in chat_data:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="No game pending!")
+        return
+    elif not chat_data["game_is_pending"]:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="No game pending!")
+        return
+    if update.message.from_user.id not in chat_data["pending_players"]:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="It's not like you were playing...")
+    else:
+        del chat_data["pending_players"][update.message.from_user.id]
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Succcessfully removed from the game.")
+
+
 def pending_players(bot, update, chat_data=None):
     """
     Lists all players for the pending game of Cthulhu.
@@ -193,7 +211,6 @@ def start_game(bot, update, chat_data=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text=chat_data["game"].display_board())
         
-
 
 def end_game(bot, update, chat_data=None):
     """
@@ -357,7 +374,8 @@ bot = telegram.Bot(token=token)
 updater = Updater(token=token)
 dispatcher = updater.dispatcher
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
-                    '%(message)s', level=logging.INFO)
+                    '%(message)s', level=logging.INFO,
+                    filename='ignore/logging.txt', filemode='a')
 
 
 # Logistical command handlers.
@@ -374,6 +392,7 @@ dispatcher.add_handler(feedback_handler)
 newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True)
 joingame_handler = CommandHandler('joingame', join_game, pass_chat_data=True,
                                   pass_args=True)
+unjoin_handler = CommandHandler('unjoin', unjoin, pass_chat_data=True)
 pending_handler = CommandHandler('pendingplayers', pending_players,
                                  pass_chat_data=True)
 startgame_handler = CommandHandler('startgame', start_game,
@@ -381,6 +400,7 @@ startgame_handler = CommandHandler('startgame', start_game,
 endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
 dispatcher.add_handler(newgame_handler)
 dispatcher.add_handler(joingame_handler)
+dispatcher.add_handler(unjoin_handler)
 dispatcher.add_handler(pending_handler)
 dispatcher.add_handler(startgame_handler)
 dispatcher.add_handler(endgame_handler)

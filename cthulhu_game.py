@@ -184,7 +184,7 @@ class Hand:
 
     def get_contents(self):
         """
-        Returns nicely-formatted contecannts of the hand, keeping in mind reveals.
+        Returns nicely-formatted contents of the hand, keeping in mind reveals.
         """
         hand = ""
         for i, card in enumerate(self.contents):
