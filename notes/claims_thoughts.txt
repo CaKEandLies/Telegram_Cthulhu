@@ -1,0 +1,20 @@
+Notes on implementing claims:
+
+Player - has a claim tuple of blank, elder, cthulhu
+	set_claim(B, E, C)
+	display_claim() - displays with emojis
+
+Game - keeps track of which player(s) can currently claim and the first to do so in the round (useful for indexing)
+	self.claim_settings - can be 'none', 'soft', or 'hard'
+	self.claim - A value of -1000 happens with 'soft' claims, -1 when everybody can claim
+	self.claim_start
+	claim(pos, B, E, C)
+	whose_claim() - returns nickname/id of whose claim it is, None if everyone can claim
+	
+Bot - allows players to claim with the /claim command
+	/claim x - Sets a claim of x signs for the player
+	/claim x y - Sets a claim of x signs and y cthulhus for the player
+	/claim x C - Sets a claim of x signs and 1 cthulhu
+	/claim C - Sets a claim of cthulhu
+	/claimsettings ['soft', 'hard'] - changes claim settings
+	/blaim - Tag the next person who needs to claim

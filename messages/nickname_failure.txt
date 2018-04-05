@@ -1,0 +1,1 @@
+Your nickname for this game is invalid, either because it is a number or because it is too similar to a different player's nickname. To register under a different nickname, please use the command "/joingame [nickname]". 

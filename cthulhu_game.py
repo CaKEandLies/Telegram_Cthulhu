@@ -39,6 +39,7 @@ class Player:
         self.is_cultist = is_cultist
         self.hand = Hand([])
         self.id = player_id
+        self.claim = (0, 0, 0)
 
     def __str__(self):
         """
@@ -70,6 +71,15 @@ class Player:
         revealed.
         """
         return self.hand.get_contents()
+    
+    def display_claim(self):
+        """
+        Displays the player's claim in emoji form.
+        """
+        blank, sign, cthulhu = self.claim
+        if blank == 0 and sign == 0 and cthulhu == 0:
+            return None
+        return (blank * "⚪️" + sign * "🔵" + cthulhu * "🔴 ")
 
     def get_id(self):
         """
@@ -94,6 +104,12 @@ class Player:
         if not isinstance(hand, Hand):
             raise TypeError("Argument must be of type Hand.")
         self.hand = hand
+        
+    def set_claim(self, blank, elder, cthulhu):
+        """
+        Set's this person's current claim.
+        """
+        self.claim = (blank, elder, cthulhu)
 
     def can_be_investigated(self):
         """
@@ -289,6 +305,7 @@ class Game:
         deck - A deck of cards representing the game.
         signs_remaining - Number of Elder Signs remaining.
         flashlight - The index of the player who has the flashlight.
+        game_log - A representation of the game.
 
     TODO:
         Fix off-by-one errors, potentially.
@@ -305,7 +322,7 @@ class Game:
              7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
              10: player_10_roles}
 
-    def __init__(self, players, game_id=0):
+    def __init__(self, players, claim_settings = 'soft'):
         """
         Initializes a game of Don't Mess With Cthulhu given player names.
 
@@ -333,8 +350,19 @@ class Game:
         self.flashlight = starting
         self.deck = Deck(num)
         self.signs_remaining = num
-        self.game_id = game_id
         self.moves = []
+        self.round_number = 1
+        if 'hard' in self.claim_settings:
+            self.claim = self.flashlight
+            self.claim_start = self.flashlight
+        else:
+            self.claim = -1000
+        # Initialize the game log with roles.
+        self.game_log = "Roles: \n"
+        for i in range(num):
+            self.game_log += self.players[i].get_name() + ":" + roles[i]
+            self.game_log += "\n"
+
 
     def get_roles(self):
         """
@@ -354,12 +382,28 @@ class Game:
             hands[player.get_id()] = player.get_hand()
         return hands
 
+    def get_log(self):
+        if self.cultists_have_won():
+            self.game_log += "\n Cultist victory!"
+        elif self.investigators_have_won():
+            self.game_log += "\n Investigator victory!"
+        return self.game_log
+
     def can_investigate_position(self, position):
         """
         Returns whether the player at position can be investigated.
         """
         return self.players[position].can_be_investigated()
 
+    def whose_claim(self):
+        """
+        Return the nickname/id of the next player to claim.
+        """
+        if self.claim == -1 or self.claim == -1000:
+            return None
+        return (self.players[self.claim].get_name(),
+                self.players[self.claim].get_id())
+    
     def where_flashlight(self):
         """
         Returns the position of the flashlight.
@@ -376,7 +420,7 @@ class Game:
         """
         Returns whether cultists have won this round.
         """
-        return "C" in self.moves
+        return "C" in self.moves or self.round_number > 4
 
     def is_valid_name(self, name):
         """
@@ -405,11 +449,19 @@ class Game:
 
     def deal_cards(self):
         """
-        Deals out cards to players.
+        Deals out cards to players and updates the game log to match.
         """
         hands = self.deck.deal()
+        self.game_log += ("\n" + "Round %s" % self.round_number + '\n')
         for i in range(len(self.players)):
             self.players[i].set_hand(hands[i])
+            blank = hands[i].get_blank()
+            sign = hands[i].get_elder()
+            cthulhu = hands[i].get_cthulhu()
+            self.game_log += (self.players[i].get_name() + ": ")
+            # TODO: fix this line to be prettier.
+            self.game_log += (blank*"-" + sign*"E" + cthulhu*"C" + '\n')
+
 
     def recollect_cards(self):
         """
@@ -418,25 +470,52 @@ class Game:
         assert len(self.moves) == len(self.players)
         self.deck.return_cards(self.moves)
         self.moves = []
+        self.round_number += 1
+        self.claim = self.flashlight
+        for player in self.players:
+            player.set_claim(0, 0, 0)
+
+    def claim(self, pos, blank, elder, cthulhu):
+        """
+        Sets the claim for a player at position pos.
+
+        # TODO: Error handling. 
+        """
+        self.players[pos].set_claim(blank, elder, cthulhu)
+        self.claim += 1
+        # Wrap around the table.
+        if self.claim == len(self.players):
+            self.claim = 0
+        if self.claim == self.claim_start:
+            self.claim = -1
 
     def investigate(self, position):
         """
         Investigate the player at position position.
+
+        Returns, as a tuple:
+            The board after investigation but prior to any reshuffling.
+            The move.
+            Whether this turn marked the end of a round.
         """
         assert self.can_investigate_position(position)
+        # Keep track of flashlight while having original holder investigate.
         temp = self.flashlight
         self.flashlight = position
         move = self.players[temp].investigate(self.players[position])
         self.moves.append(move)
+
         end_of_round = False
+        old_board = self.display_board()
         if "E" in move:
             self.signs_remaining -= 1
         if len(self.moves) >= len(self.players):
-            print(self.moves)
+            self.game_log += "Moves made this round: \n"
+            self.game_log += old_board + "\n"
             self.recollect_cards()
             self.deal_cards()
             end_of_round = True
-        return move, end_of_round
+        return old_board, move, end_of_round
 
     def take_move(self):
         """
@@ -469,6 +548,8 @@ class Game:
                 display += " (🔦) "
             display += " : "
             display += player.display_hand()
+            if player.display_claim():
+                display += (" (claimed: %s)" % player.display_claim())
             display += "\n"
         display += "Elder Signs remaining: %s" % self.signs_remaining
         return display
