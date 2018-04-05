@@ -15,6 +15,8 @@ TODO:
 """
 import random
 
+IS_TEST = True
+
 
 class Player:
     """
@@ -248,7 +250,7 @@ class Deck:
         """
         self.round_count = 0
         self.signs = num_players
-        if num_players > 10 or num_players < 4:
+        if (num_players > 10 or num_players < 4) and not IS_TEST:
             raise Exception("Incorrect number of players!")
         if (num_players > 8):
             self.cthulhus = 2
@@ -318,9 +320,10 @@ class Game:
     player_8_roles = ["Investigator"] * 5 + ["Cultist"] * 3
     player_9_roles = ["Investigator"] * 6 + ["Cultist"] * 4
     player_10_roles = ["Investigator"] * 7 + ["Cultist"] * 4
+    player_2_roles = ["Investigator"] + ["Cultist"] # for testing.
     ROLES = {4: player_4_roles, 5: player_5_roles, 6: player_6_roles,
              7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
-             10: player_10_roles}
+             10: player_10_roles, 2: player_2_roles}
 
     def __init__(self, players, claim_settings = 'soft'):
         """
@@ -331,7 +334,7 @@ class Game:
         @raises Exception - if incorrect number of players.
         """
         num = len(players)
-        if num > 10 or num < 4:
+        if (num > 10 or num < 4) and not IS_TEST:
             raise Exception("Incorrect number of players!")
 
         roles = self.ROLES[num]
