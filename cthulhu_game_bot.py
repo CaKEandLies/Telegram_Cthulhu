@@ -7,7 +7,7 @@ Created on Wed Mar 21 14:48:01 2018
 This program implements a Telegram bot for games of Don't Mess With Cthulhu.
 
 TODO:
-    Fix issues wrt valid names. (Done.)
+    Fix issues wrt valid names. (Done, untested.)
     Print board status at end of round before reshuffle. (Done, untested.)
     Rewrite pending players somewhat. (Done, untested.)
     Enable spectation. (Done, untested.)
@@ -57,7 +57,9 @@ def is_game_pending(chat_data):
     """
     if "game_is_pending" in chat_data:
         if chat_data["game_is_pending"]:
+            print("is_game_pending is true")
             return True
+    print("game isn't pending")
     return False
 
 
@@ -69,7 +71,7 @@ def is_nickname_valid(name, user_id, chat_data):
     
     # It's okay if the user is already registered under that name.
     if user_id in chat_data["pending_players"]:
-        if chat_data["pending_players"][user_id].lower() == name.lower():
+        if chat_data["pending_players"][user_id] == name:
             return True
     # Look for a case-insensitive version of the name in remaining players.
     for user_id, user_name in chat_data["pending_players"].items():
@@ -254,7 +256,7 @@ def start_game(bot, update, chat_data=None):
     if not is_game_pending(chat_data):
         bot.send_message(chat_id=update.message.chat_id,
                          text="no game to start!")
-    if len(chat_data["pending_players"]) < 4 and not IS_TEST:
+    if len(chat_data["pending_players"]) < 4:
         bot.send_message(chat_id=update.message.chat_id,
                          text="Not enough players yet!")
         return
@@ -537,7 +539,7 @@ def send_dm(bot, update):
                      text="sliding into those dungeon masters!")
 
 
-### Set up the bot.
+# Set up the bot.
 # If you want to use this bot yourself, please message me directly.
 token = open('ignore/token.txt', 'r').read()
 bot = telegram.Bot(token=token)
