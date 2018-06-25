@@ -320,10 +320,13 @@ class Game:
     player_8_roles = ["Investigator"] * 5 + ["Cultist"] * 3
     player_9_roles = ["Investigator"] * 6 + ["Cultist"] * 4
     player_10_roles = ["Investigator"] * 7 + ["Cultist"] * 4
-    player_2_roles = ["Investigator"] + ["Cultist"] # for testing.
+    player_2_roles = ["Investigator"] + ["Cultist"]  # for testing.
+    player_1_roles = ["Investigator"] + ["Cultist"]
     ROLES = {4: player_4_roles, 5: player_5_roles, 6: player_6_roles,
              7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
              10: player_10_roles, 2: player_2_roles}
+    
+    global IS_TEST
 
     def __init__(self, players, claim_settings = 'soft'):
         """
