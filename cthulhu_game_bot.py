@@ -192,7 +192,7 @@ def spectate(bot, update, chat_data=None):
     else:
         try:
             bot.send_message(chat_id=update.message.from_user.id,
-                             text="trying!")
+                             text="You've started spectating!")
         except Unauthorized as unauth:
             bot.send_message(chat_id=update.message.from_chat,
                              text="You need to start a conversation with me!")
@@ -201,8 +201,6 @@ def spectate(bot, update, chat_data=None):
         if is_game_ongoing(chat_data):
             bot.send_message(chat_id=update.message.from_user.id,
                              text=chat_data["game"].get_log())
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="started!")
 
 
 def unspectate(bot, update, chat_data=None):
@@ -249,7 +247,7 @@ def start_game(bot, update, chat_data=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="No game pending!")
         return
-    if len(chat_data["pending_players"]) < 4:
+    if len(chat_data["pending_players"]) < 1:
         bot.send_message(chat_id=update.message.chat_id,
                          text="Not enough players yet!")
         return
@@ -301,7 +299,7 @@ def claim(bot, update):
 
 def send_roles(bot, game, chat_data):
     """
-    Sends roles to players in the game.
+    Sends roles to players and spectators in the game.
     """
     roles = game.get_roles()
     spicy = random.randint(0, 100)
@@ -321,7 +319,7 @@ def send_roles(bot, game, chat_data):
 
 def send_hands(bot, game, chat_data):
     """
-    Sends hands to players in the game.
+    Sends hands to players and spectators in the game.
     """
     hands = game.get_hands()
     for user_id, hand in hands.items():
@@ -378,7 +376,6 @@ def investigate(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="You cannot investigate this player. Try again!")
         return False
-
     result, end_of_round = chat_data["game"].investigate(pos)
     if "E" in result:
         bot.send_message(chat_id=update.message.chat_id,

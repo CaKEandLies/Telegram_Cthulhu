@@ -70,6 +70,12 @@ class Player:
         revealed.
         """
         return self.hand.get_contents()
+    
+    def display_full_hand(self):
+        """
+        Returns the entire contents of the hand, nicely-formatted.
+        """
+        return self.hand.get_full_contents()
 
     def get_id(self):
         """
@@ -198,6 +204,16 @@ class Hand:
             else:
                 hand += "⚫"
         return hand
+    
+    def get_full_contents(self):
+        """
+        Returns nicely-formatted contents of the entire hand, sorted.
+        """
+        hand = ""
+        hand = hand + self.get_blank() * "⚪️"
+        hand = hand + self.get_elder() * "🔵"
+        hand = hand + self.get_cthulhu() * "🔴"
+        return hand
 
     def pick_card(self):
         """
@@ -232,7 +248,7 @@ class Deck:
         """
         self.round_count = 0
         self.signs = num_players
-        if num_players > 10 or num_players < 4:
+        if num_players > 10 or num_players < 1:
             raise Exception("Incorrect number of players!")
         if (num_players > 8):
             self.cthulhus = 2
@@ -295,6 +311,9 @@ class Game:
         Fix off-by-one errors, potentially.
         Implement a system for claiming.
     """
+    player_1_roles = ["Investigator"] * 1 + ["Cultist"] * 1
+    player_2_roles = ["Investigator"] * 1 + ["Cultist"] * 1
+    player_3_roles = ["Investigator"] * 2 + ["Cultist"] * 1
     player_4_roles = ["Investigator"] * 3 + ["Cultist"] * 2
     player_5_roles = ["Investigator"] * 4 + ["Cultist"] * 2
     player_6_roles = ["Investigator"] * 4 + ["Cultist"] * 2
@@ -302,7 +321,8 @@ class Game:
     player_8_roles = ["Investigator"] * 5 + ["Cultist"] * 3
     player_9_roles = ["Investigator"] * 6 + ["Cultist"] * 4
     player_10_roles = ["Investigator"] * 7 + ["Cultist"] * 4
-    ROLES = {4: player_4_roles, 5: player_5_roles, 6: player_6_roles,
+    ROLES = {1: player_1_roles, 2: player_2_roles, 3: player_3_roles,
+             4: player_4_roles, 5: player_5_roles, 6: player_6_roles,
              7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
              10: player_10_roles}
 
@@ -315,7 +335,7 @@ class Game:
         @raises Exception - if incorrect number of players.
         """
         num = len(players)
-        if num > 10 or num < 4:
+        if num > 10 or num < 1:
             raise Exception("Incorrect number of players!")
 
         roles = self.ROLES[num]
@@ -365,7 +385,8 @@ class Game:
         """
         result = " "
         for player in self.players:
-            result = result+player.get_name()+": " + player.display_hand()+"\n"
+            result += player.get_name() + ": "
+            result += player.display_full_hand() + "\n"
         return result
     
     def get_log(self):
@@ -428,12 +449,9 @@ class Game:
         self.game_log += ('\n')
         for i in range(len(self.players)):
             self.players[i].set_hand(hands[i])
-            blank = hands[i].get_blank()
-            sign = hands[i].get_elder()
-            cthulhu = hands[i].get_cthulhu()
             self.game_log += (self.players[i].get_name() + ": ")
-            # TODO: fix this line to be prettier.
-            self.game_log += (blank*"⚪️" + sign*"🔵" + cthulhu*"🔴 " + '\n')
+            self.game_log += self.players[i].display_full_hand()
+            self.game_log += "\n"
 
     def recollect_cards(self):
         """
