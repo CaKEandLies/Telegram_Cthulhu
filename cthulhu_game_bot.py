@@ -91,7 +91,7 @@ def new_game(bot, update, chat_data=None):
         chat_data["game_is_pending"] = True
         chat_data["pending_players"] = {}
         bot.send_message(chat_id=update.message.chat_id,
-                         text="/joingame to join, /startgame to start.")
+                         text=read_message('messages/new_game.txt'))
     else:
         if chat_data["game_is_ongoing"]:
             bot.send_message(chat_id=update.message.chat_id,
@@ -201,6 +201,8 @@ def start_game(bot, update, chat_data=None):
         begin_game(bot, chat_data["game"])
         chat_data["round_number"] = 1
         bot.send_message(chat_id=update.message.chat_id,
+                         text=read_message('messages/start_game.txt'))
+        bot.send_message(chat_id=update.message.chat_id,
                          text=chat_data["game"].display_board())
         
 
@@ -233,16 +235,16 @@ def send_roles(bot, game):
     Sends roles to players in the game.
     """
     roles = game.get_roles()
-    spicy = random.randint(100)
+    spicy = random.randint(0, 100)
     for user_id, is_cultist in roles.items():
         if is_cultist:
             bot.send_message(chat_id=user_id, text="You're a Cultist.")
             if spicy < 5:
-                bot.send_message(chat_id=user_id, text="swiggity swooty, you're after cthulhu's booty ;)")
+                bot.send_message(chat_id=user_id, text="hot take: cum is a soup")
         else:
             bot.send_message(chat_id=user_id, text="You're an Investigator.")
             if spicy < 5:
-                bot.send_message(chat_id=user_id, text="listen to your daddy and your other elders 💦")
+                bot.send_message(chat_id=user_id, text="are balls ravioli?")
 
 
 def send_hands(bot, game):
