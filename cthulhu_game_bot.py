@@ -19,6 +19,7 @@ from telegram.ext import CommandHandler
 import logging
 import cthulhu_game as cg
 from telegram.error import Unauthorized
+import random
 
 
 ### Generally useful functions.
@@ -42,8 +43,6 @@ def start(bot, update):
 def help_message(bot, update):
     """
     Sends the user a message giving help.
-
-    #TODO: write this function.
     """
     bot.send_message(chat_id=update.message.chat_id,
                      text=read_message('messages/help.txt'))
@@ -86,8 +85,6 @@ def feedback(bot, update, args=None):
 def new_game(bot, update, chat_data=None):
     """
     Starts a new game of Don't Mess with Cthulhu in the given chat.
-
-    # TODO: Ensure in a chat with enough people.
     """
     if "game_is_ongoing" not in chat_data:
         chat_data["game_is_ongoing"] = False
@@ -107,7 +104,7 @@ def new_game(bot, update, chat_data=None):
             chat_data["game_is_pending"] = True
             chat_data["game_is_ongoing"] = False
             bot.send_message(chat_id=update.message.chat_id,
-                             text="/joingame to join, /startgame to start.")
+                             text=read_message('messages/new_game.txt'))
 
 
 def join_game(bot, update, chat_data=None, args=None):
@@ -176,8 +173,6 @@ def pending_players(bot, update, chat_data=None):
 def start_game(bot, update, chat_data=None):
     """
     Starts the pending game.
-
-    #TODO: Catch incorrect permissions error.
     """
     # Check that a game with enough players is pending. 
     if "game_is_pending" not in chat_data:
@@ -238,11 +233,16 @@ def send_roles(bot, game):
     Sends roles to players in the game.
     """
     roles = game.get_roles()
+    spicy = random.randint(100)
     for user_id, is_cultist in roles.items():
         if is_cultist:
             bot.send_message(chat_id=user_id, text="You're a Cultist.")
+            if spicy < 5:
+                bot.send_message(chat_id=user_id, text="swiggity swooty, you're after cthulhu's booty ;)")
         else:
             bot.send_message(chat_id=user_id, text="You're an Investigator.")
+            if spicy < 5:
+                bot.send_message(chat_id=user_id, text="listen to your daddy and your other elders 💦")
 
 
 def send_hands(bot, game):
@@ -406,9 +406,9 @@ dispatcher.add_handler(endgame_handler)
 investigate_handler = CommandHandler('investigate', investigate,
                                      pass_chat_data=True, pass_args=True)
 invest_handler = CommandHandler('invest', investigate,
-                                     pass_chat_data=True, pass_args=True)
+                                pass_chat_data=True, pass_args=True)
 dig_handler = CommandHandler('dig', investigate,
-                                     pass_chat_data=True, pass_args=True)
+                             pass_chat_data=True, pass_args=True)
 dispatcher.add_handler(investigate_handler)
 dispatcher.add_handler(invest_handler)
 dispatcher.add_handler(dig_handler)

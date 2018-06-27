@@ -432,7 +432,6 @@ class Game:
         if "E" in move:
             self.signs_remaining -= 1
         if len(self.moves) >= len(self.players):
-            print(self.moves)
             self.recollect_cards()
             self.deal_cards()
             end_of_round = True
