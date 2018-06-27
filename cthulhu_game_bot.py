@@ -311,11 +311,11 @@ def send_roles(bot, game, chat_data):
         if is_cultist:
             bot.send_message(chat_id=user_id, text="You're a Cultist.")
             if spicy < 5:
-                bot.send_message(chat_id=user_id, text="hot take: cum is a soup")
+                bot.send_message(chat_id=user_id, text="dog pictures can never be spam")
         else:
             bot.send_message(chat_id=user_id, text="You're an Investigator.")
             if spicy < 5:
-                bot.send_message(chat_id=user_id, text="are balls ravioli?")
+                bot.send_message(chat_id=user_id, text="i love dogs")
     # Send roles to spectators.
     for user_id in chat_data["spectators"]:
         bot.send_message(chat_id=user_id, text=game.get_log())

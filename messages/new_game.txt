@@ -2,7 +2,9 @@ A new game of Cthulhu has been created for this chat and is currently pending.
 
 /joingame - join the game.
 /joingame [nickname] - joins the game under the name "nickname".
-/spectate - feature coming soon!
+/unjoin - unjoins you from a pending game.
+/spectate - spectate this game.
+/unspectate - removes you as a spectator.
 /endgame - cancels this pending game.
 /startgame - starts the pending game.
 

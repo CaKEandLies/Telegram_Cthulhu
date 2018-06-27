@@ -6,6 +6,9 @@ Basics:
 Administrating a game:
   /newgame - creates a new pending game in this chat.
   /joingame [nickname] - adds you to a pending game (if it exists) in the chat. If you entered a nickname, you will be registered under that. Otherwise, you will be registered under your first name on Telegram.
+  /unjoin - removes you from a pending game
+  /spectate - adds you as a spectator to the pending or ongoing game.
+  /unspectate - removes you as a spectator.
   /startgame - starts the pending game with all players who have joined.
   /endgame - ends any pending or ongoing game. 
 
@@ -15,4 +18,4 @@ In-game:
 Other:
   /feedback [feedback] - sends your feedback to the developer of this bot. 
 
-There are also a number of other commands this bot responds to. Try and find them!
+There are also a number of secret commands this bot responds to. Try and find them!
