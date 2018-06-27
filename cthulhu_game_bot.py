@@ -278,8 +278,9 @@ def end_game(bot, update, chat_data=None):
     """
     Ends any pending or ongoing game.
     """
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=chat_data["game"].get_log())
+    if is_game_ongoing(chat_data):
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=chat_data["game"].get_log())
     chat_data["game_is_pending"] = False
     chat_data["game_is_ongoing"] = False
     chat_data["game"] = None
