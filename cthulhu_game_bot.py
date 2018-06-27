@@ -146,13 +146,18 @@ def join_game(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="Game is full, sorry!")
         return
-
+    
+    user_id = update.message.from_user.id
+    if user_id in chat_data["spectators"]:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="You must /unspectate to join.")
+        return
     # Add this player to the list of pending players with a nickname.
     if args:
         nickname = args[0]
     else:
         nickname = update.message.from_user.first_name
-    user_id = update.message.from_user.id
+    
     chat_data["pending_players"][user_id] = nickname
     bot.send_message(chat_id=update.message.chat_id,
                      text="Registered under nickname %s!" % nickname)
@@ -247,7 +252,7 @@ def start_game(bot, update, chat_data=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="No game pending!")
         return
-    if len(chat_data["pending_players"]) < 1:
+    if len(chat_data["pending_players"]) < 3:
         bot.send_message(chat_id=update.message.chat_id,
                          text="Not enough players yet!")
         return
@@ -263,7 +268,6 @@ def start_game(bot, update, chat_data=None):
         chat_data["game_is_pending"] = False
         chat_data["game"] = cg.Game(chat_data["pending_players"])
         begin_game(bot, chat_data["game"], chat_data)
-        chat_data["round_number"] = 1
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/start_game.txt'))
         bot.send_message(chat_id=update.message.chat_id,
@@ -376,34 +380,33 @@ def investigate(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="You cannot investigate this player. Try again!")
         return False
-    result, end_of_round = chat_data["game"].investigate(pos)
+    result = chat_data["game"].investigate(pos)
     if "E" in result:
         bot.send_message(chat_id=update.message.chat_id,
                          text="You found an Elder Sign!")
-        if chat_data["game"].investigators_have_won():
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Investigators win!")
-            end_game(bot, update, chat_data=chat_data)
-            return True
     elif "C" in result:
         bot.send_message(chat_id=update.message.chat_id,
                          text="You found Cthulhu!")
-        end_game(bot, update, chat_data)
-        return True
     elif "-" in result:
         bot.send_message(chat_id=update.message.chat_id, text="Nothing...")
-
-    if end_of_round:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="Round is over!")
-        chat_data["round_number"] += 1
-        if chat_data["round_number"] > 4:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Cultists win by default!")
-            return True
-        send_hands(bot, chat_data["game"], chat_data)
-    bot.send_message(chat_id=update.message.chat_id,
+    
+    bot.send_message(chat_id=update.message.chat_id, 
                      text=chat_data["game"].display_board())
+    # Check victory conditions.
+    if chat_data["game"].investigators_have_won():
+        bot.send_message(chat_id=update.message.chat_id,text="Investigators win!")
+        end_game(bot, update, chat_data=chat_data)
+        return True
+    if chat_data["game"].cultists_have_won():
+        bot.send_message(chat_id=update.message.chat_id, text="Cultists win!")
+        end_game(bot, update, chat_data=chat_data)
+        return True
+    
+    if chat_data["game"].redeal():
+        bot.send_message(chat_id=update.message.chat_id, text="Round is over!")
+        send_hands(bot, chat_data["game"], chat_data)
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=chat_data["game"].display_board())
 
 
 ### Hidden commands and other miscellany. 

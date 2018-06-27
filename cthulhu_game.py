@@ -313,7 +313,7 @@ class Game:
     """
     player_1_roles = ["Investigator"] * 1 + ["Cultist"] * 1
     player_2_roles = ["Investigator"] * 1 + ["Cultist"] * 1
-    player_3_roles = ["Investigator"] * 2 + ["Cultist"] * 1
+    player_3_roles = ["Investigator"] * 3 + ["Cultist"] * 2
     player_4_roles = ["Investigator"] * 3 + ["Cultist"] * 2
     player_5_roles = ["Investigator"] * 4 + ["Cultist"] * 2
     player_6_roles = ["Investigator"] * 4 + ["Cultist"] * 2
@@ -357,6 +357,7 @@ class Game:
         self.game_id = game_id
         self.moves = []
         self.game_log = "Roles: \n"
+        self.round_number = 1
         for i in range(num):
             self.game_log += self.players[i].get_name() + ": " + roles[i]
             self.game_log += "\n"
@@ -414,7 +415,7 @@ class Game:
         """
         Returns whether cultists have won this round.
         """
-        return "C" in self.moves
+        return "C" in self.moves or self.round_number > 4
 
     def is_valid_name(self, name):
         """
@@ -470,14 +471,22 @@ class Game:
         self.flashlight = position
         move = self.players[temp].investigate(self.players[position])
         self.moves.append(move)
-        end_of_round = False
+        if len(self.moves) == len(self.players):
+            self.round_number += 1
         if "E" in move:
             self.signs_remaining -= 1
+        return move
+    
+    def redeal(self):
+        """
+        If needed, recollect and deal cards. Returns True if needed,
+        False otherwise.
+        """
         if len(self.moves) >= len(self.players):
             self.recollect_cards()
             self.deal_cards()
-            end_of_round = True
-        return move, end_of_round
+            return True
+        return False
 
     def take_move(self):
         """
