@@ -8,12 +8,9 @@ This program implements a Telegram bot for games of Don't Mess With Cthulhu.
 
 TODO:
     Implement a claims system.
-    Implement a pending players command so that people can see who's signed up.
     Write more detailed messages in response to commands.
     Write flavortext.
     Potentially implement a spectate command.
-    Create an unjoin command.
-    Create a feedback command.
 """
 
 import telegram
@@ -162,6 +159,7 @@ def pending_players(bot, update, chat_data=None):
     """
     Lists all players for the pending game of Cthulhu.
     """
+    message = "List of pending players: \n"
     if "game_is_pending" not in chat_data:
         bot.send_message(chat_id=update.message.chat_id,
                          text="No game pending!")
@@ -170,10 +168,9 @@ def pending_players(bot, update, chat_data=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="No game pending!")
         return
-    bot.send_message(chat_id=update.message.chat_id,
-                     text="Current list of pending players: ")
     for user_id, name in chat_data["pending_players"].items():
-        bot.send_message(chat_id=update.message.chat_id, text=name)
+        message = message + name + "\n"
+    bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
 def start_game(bot, update, chat_data=None):
@@ -408,7 +405,13 @@ dispatcher.add_handler(endgame_handler)
 # Handlers for in-game commands.
 investigate_handler = CommandHandler('investigate', investigate,
                                      pass_chat_data=True, pass_args=True)
+invest_handler = CommandHandler('invest', investigate,
+                                     pass_chat_data=True, pass_args=True)
+dig_handler = CommandHandler('dig', investigate,
+                                     pass_chat_data=True, pass_args=True)
 dispatcher.add_handler(investigate_handler)
+dispatcher.add_handler(invest_handler)
+dispatcher.add_handler(dig_handler)
 
 # Handlers for "hidden" commands.
 wee_handler = CommandHandler('wee', wee)
