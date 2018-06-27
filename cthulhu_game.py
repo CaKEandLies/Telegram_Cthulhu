@@ -289,6 +289,7 @@ class Game:
         deck - A deck of cards representing the game.
         signs_remaining - Number of Elder Signs remaining.
         flashlight - The index of the player who has the flashlight.
+        game_log - A representation of the game.
 
     TODO:
         Fix off-by-one errors, potentially.
@@ -335,6 +336,10 @@ class Game:
         self.signs_remaining = num
         self.game_id = game_id
         self.moves = []
+        self.game_log = "Roles: \n"
+        for i in range(num):
+            self.game_log += self.players[i].get_name() + ": " + roles[i]
+            self.game_log += "\n"
 
     def get_roles(self):
         """
@@ -353,6 +358,18 @@ class Game:
         for player in self.players:
             hands[player.get_id()] = player.get_hand()
         return hands
+    
+    def get_formatted_hands(self):
+        """
+        Returns a formatted string of players hands.
+        """
+        result = " "
+        for player in self.players:
+            result = result+player.get_name()+": " + player.display_hand()+"\n"
+        return result
+    
+    def get_log(self):
+        return self.game_log
 
     def can_investigate_position(self, position):
         """
@@ -405,11 +422,18 @@ class Game:
 
     def deal_cards(self):
         """
-        Deals out cards to players.
+        Deals out cards to players and updates game log.
         """
         hands = self.deck.deal()
+        self.game_log += ('\n')
         for i in range(len(self.players)):
             self.players[i].set_hand(hands[i])
+            blank = hands[i].get_blank()
+            sign = hands[i].get_elder()
+            cthulhu = hands[i].get_cthulhu()
+            self.game_log += (self.players[i].get_name() + ": ")
+            # TODO: fix this line to be prettier.
+            self.game_log += (blank*"⚪️" + sign*"🔵" + cthulhu*"🔴 " + '\n')
 
     def recollect_cards(self):
         """

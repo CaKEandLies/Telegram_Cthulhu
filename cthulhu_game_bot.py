@@ -11,6 +11,8 @@ TODO:
     Write more detailed messages in response to commands.
     Write flavortext.
     Potentially implement a spectate command.
+    Write a reset state helper function.
+    Actually use is_game_pending and is_game_ongoing.
 """
 
 import telegram
@@ -29,6 +31,29 @@ def read_message(filepath):
     """
     message = open(filepath, 'r').read()
     return message
+
+def is_game_ongoing(chat_data):
+    """
+    Determines whether a game is ongoing given chat data.
+    TODO: use this function.
+    """
+    if "game_is_ongoing" in chat_data:
+        if chat_data["game_is_ongoing"]:
+            return True
+    return False
+
+
+def is_game_pending(chat_data):
+    """
+    Determines whether a game is pending given chat data.
+    TODO: use this function.
+    """
+    if "game_is_pending" in chat_data:
+        if chat_data["game_is_pending"]:
+            print("is_game_pending is true")
+            return True
+    print("game isn't pending")
+    return False
 
 
 ### Non-game related commands.
@@ -90,6 +115,7 @@ def new_game(bot, update, chat_data=None):
         chat_data["game_is_ongoing"] = False
         chat_data["game_is_pending"] = True
         chat_data["pending_players"] = {}
+        chat_data["spectators"] = []
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/new_game.txt'))
     else:
@@ -101,6 +127,7 @@ def new_game(bot, update, chat_data=None):
                              text="There's already a game pending. /endgame?")
         else:
             chat_data["pending_players"] = {}
+            chat_data["spectators"] = []
             chat_data["game_is_pending"] = True
             chat_data["game_is_ongoing"] = False
             bot.send_message(chat_id=update.message.chat_id,
@@ -152,6 +179,45 @@ def unjoin(bot, update, chat_data=None):
                          text="Succcessfully removed from the game.")
 
 
+def spectate(bot, update, chat_data=None):
+    """
+    Signs the user up as a spectator for the current game.
+    """
+    if not is_game_ongoing(chat_data) and not is_game_pending(chat_data):
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="There's no game to spectate!")
+    elif update.message.from_user.id in chat_data["pending_players"]:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="You can't spectate a game you're a player in!")
+    else:
+        try:
+            bot.send_message(chat_id=update.message.from_user.id,
+                             text="trying!")
+        except Unauthorized as unauth:
+            bot.send_message(chat_id=update.message.from_chat,
+                             text="You need to start a conversation with me!")
+            return
+        chat_data["spectators"].append(update.message.from_user.id)
+        if is_game_ongoing(chat_data):
+            bot.send_message(chat_id=update.message.from_user.id,
+                             text=chat_data["game"].get_log())
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="started!")
+
+
+def unspectate(bot, update, chat_data=None):
+    """
+    Removes the user as a spectator.
+    """
+    if update.message.from_user.id in chat_data["spectators"]:
+        chat_data["spectators"].remove(update.message.from_user.id)
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="stopped spectating!")
+        return
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="You weren't spectating...")
+
+
 def pending_players(bot, update, chat_data=None):
     """
     Lists all players for the pending game of Cthulhu.
@@ -198,7 +264,7 @@ def start_game(bot, update, chat_data=None):
         chat_data["game_is_ongoing"] = True
         chat_data["game_is_pending"] = False
         chat_data["game"] = cg.Game(chat_data["pending_players"])
-        begin_game(bot, chat_data["game"])
+        begin_game(bot, chat_data["game"], chat_data)
         chat_data["round_number"] = 1
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/start_game.txt'))
@@ -210,10 +276,13 @@ def end_game(bot, update, chat_data=None):
     """
     Ends any pending or ongoing game.
     """
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=chat_data["game"].get_log())
     chat_data["game_is_pending"] = False
     chat_data["game_is_ongoing"] = False
     chat_data["game"] = None
     chat_data["pending_players"] = {}
+    chat_data["spectators"] = []
     bot.send_message(chat_id=update.message.chat_id,
                      text=read_message('messages/end_game.txt'))
 
@@ -230,7 +299,7 @@ def claim(bot, update):
     pass
 
 
-def send_roles(bot, game):
+def send_roles(bot, game, chat_data):
     """
     Sends roles to players in the game.
     """
@@ -245,9 +314,12 @@ def send_roles(bot, game):
             bot.send_message(chat_id=user_id, text="You're an Investigator.")
             if spicy < 5:
                 bot.send_message(chat_id=user_id, text="are balls ravioli?")
+    # Send roles to spectators.
+    for user_id in chat_data["spectators"]:
+        bot.send_message(chat_id=user_id, text=game.get_log())
 
 
-def send_hands(bot, game):
+def send_hands(bot, game, chat_data):
     """
     Sends hands to players in the game.
     """
@@ -255,15 +327,17 @@ def send_hands(bot, game):
     for user_id, hand in hands.items():
         bot.send_message(chat_id=user_id, text=("You have %s blanks, %s signs"
                                                 " and %s Cthulhus." % hand))
+    for spectator_id in chat_data["spectators"]:
+        bot.send_message(chat_id=spectator_id, text=game.get_formatted_hands())
 
 
-def begin_game(bot, game):
+def begin_game(bot, game, chat_data):
     """
     Sends out opening information.
     """
-    send_roles(bot, game)
+    send_roles(bot, game, chat_data)
     game.deal_cards()
-    send_hands(bot, game)
+    send_hands(bot, game, chat_data)
 
 
 def can_investigate(bot, user_id, game):
@@ -330,7 +404,7 @@ def investigate(bot, update, chat_data=None, args=None):
             bot.send_message(chat_id=update.message.chat_id,
                              text="Cultists win by default!")
             return True
-        send_hands(bot, chat_data["game"])
+        send_hands(bot, chat_data["game"], chat_data)
     bot.send_message(chat_id=update.message.chat_id,
                      text=chat_data["game"].display_board())
 
@@ -392,6 +466,8 @@ newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True)
 joingame_handler = CommandHandler('joingame', join_game, pass_chat_data=True,
                                   pass_args=True)
 unjoin_handler = CommandHandler('unjoin', unjoin, pass_chat_data=True)
+spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
+unspectate_handler = CommandHandler('unspectate', unspectate, pass_chat_data=True)
 pending_handler = CommandHandler('pendingplayers', pending_players,
                                  pass_chat_data=True)
 startgame_handler = CommandHandler('startgame', start_game,
@@ -400,6 +476,8 @@ endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
 dispatcher.add_handler(newgame_handler)
 dispatcher.add_handler(joingame_handler)
 dispatcher.add_handler(unjoin_handler)
+dispatcher.add_handler(spectate_handler)
+dispatcher.add_handler(unspectate_handler)
 dispatcher.add_handler(pending_handler)
 dispatcher.add_handler(startgame_handler)
 dispatcher.add_handler(endgame_handler)
