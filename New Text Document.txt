@@ -1,0 +1,11 @@
+start - prints intro message
+help - how to use
+rules - how to play
+newgame - creates a pending game in this chat
+joingame - joins a pending game
+unjoin - leave a pending game
+spectate - spectate a pending or ongoing game
+unspectate - stop spectating
+startgame - start a pending game
+investigate - investigate another player
+endgame - end a game

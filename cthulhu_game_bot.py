@@ -56,6 +56,30 @@ def is_game_pending(chat_data):
     return False
 
 
+def is_nickname_valid(name, user_id, chat_data):
+    """
+    Determines whether a nickname is already used or otherwise invalid.
+    """
+    assert "pending_players" in chat_data
+
+    # It's okay if the user is already registered under that name.
+    if user_id in chat_data["pending_players"]:
+        if chat_data["pending_players"][user_id] == name:
+            return True
+    # Look for a case-insensitive version of the name in remaining players.
+    for user_id, user_name in chat_data["pending_players"].items():
+        if name.lower() in user_name.lower():
+            return False
+        elif user_name.lower() in name.lower():
+            return False
+    # Check that the name isn't an integer.
+    try:
+        int(name)
+        return False
+    except ValueError as e:
+        return True
+
+
 ### Non-game related commands.
 def start(bot, update):
     """
@@ -116,6 +140,7 @@ def new_game(bot, update, chat_data=None):
         chat_data["game_is_pending"] = True
         chat_data["pending_players"] = {}
         chat_data["spectators"] = []
+        chat_data["claim_settings"] = False
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/new_game.txt'))
     else:
@@ -128,6 +153,7 @@ def new_game(bot, update, chat_data=None):
         else:
             chat_data["pending_players"] = {}
             chat_data["spectators"] = []
+            chat_data["claim_settings"] = False
             chat_data["game_is_pending"] = True
             chat_data["game_is_ongoing"] = False
             bot.send_message(chat_id=update.message.chat_id,
@@ -154,16 +180,19 @@ def join_game(bot, update, chat_data=None, args=None):
         return
     # Add this player to the list of pending players with a nickname.
     if args:
-        nickname = args[0]
+        nickname = " ".join(args)
     else:
         nickname = update.message.from_user.first_name
-    
-    chat_data["pending_players"][user_id] = nickname
-    bot.send_message(chat_id=update.message.chat_id,
-                     text="Registered under nickname %s!" % nickname)
-    bot.send_message(chat_id=update.message.chat_id,
-                     text="Current player count: "
-                     "%s" % len(chat_data["pending_players"]))
+    if is_nickname_valid(nickname, user_id, chat_data):
+        chat_data["pending_players"][user_id] = nickname
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Registered under nickname %s!" % nickname)
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Current player count: "
+                         "%s" % len(chat_data["pending_players"]))
+    else:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="That name is too similar to another name!")
 
 
 def unjoin(bot, update, chat_data=None):
@@ -252,7 +281,7 @@ def start_game(bot, update, chat_data=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="No game pending!")
         return
-    if len(chat_data["pending_players"]) < 3:
+    if len(chat_data["pending_players"]) < 1:
         bot.send_message(chat_id=update.message.chat_id,
                          text="Not enough players yet!")
         return
@@ -266,7 +295,8 @@ def start_game(bot, update, chat_data=None):
     else:
         chat_data["game_is_ongoing"] = True
         chat_data["game_is_pending"] = False
-        chat_data["game"] = cg.Game(chat_data["pending_players"])
+        chat_data["game"] = cg.Game(chat_data["pending_players"],
+                                    claims=chat_data["claim_settings"])
         begin_game(bot, chat_data["game"], chat_data)
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/start_game.txt'))
@@ -290,16 +320,110 @@ def end_game(bot, update, chat_data=None):
                      text=read_message('messages/end_game.txt'))
 
 
+### Functions that modify game settings.
+def claimsettings(bot, update, chat_data=None, args=None):
+    """
+    Sets claim settings for this chat.
+    """
+    if len(args) == 0:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="/claimsettings on or /claimsettings off")
+    elif "on" in args[0]:
+        chat_data["claim_settings"] = True
+    elif "off" in args[0]:
+        chat_data["claim_settings"] = False
+
+
 ### Gameplay-related functions.
-def claim(bot, update):
+def interpret_claim(game, args):
+    """
+    Interprets a user's claim, and returns (-, E, C). Returns False if unknown.
+
+    # TODO: one can technically declare many cthulhus. do i care?
+    # TODO: comment this a little better.
+    """
+    # TODO: Write a get_round_number function.
+    hand_size = 6 - game.round_number
+    if len(args) == 1:
+        if "C" in args[0]:
+            return (hand_size - 1, 0, 1)
+        # Interpret first number as number of elder signs. 
+        try:
+            signs = int(args[0])
+            assert signs <= hand_size
+            return (hand_size - signs, signs, 0)
+        except (ValueError, AssertionError) as e:
+            return False
+    else:
+        try:
+            signs = int(args[0])
+        except ValueError as e:
+            return False
+        if "C" in args[1]:
+            cthulhus = 1
+        else:
+            try:
+                cthulhus = int(args[1])
+            except ValueError as e:
+                return False
+        if signs + cthulhus > hand_size:
+            return False
+        else:
+            return (hand_size - signs - cthulhus, signs, cthulhus)
+        
+def claim(bot, update, chat_data=None, args=None):
     """
     Allows players to declare their claims.
-
-    # TODO: Limit this to the player who can claim.
-    # TODO: Write this function.
     """
-    keyboard = [InlineKeyboardButton("1", callback_data='1')]
-    pass
+    # Check that a game is going.
+    if not is_game_ongoing(chat_data):
+        bot.send_message(chat_id=update.message.chat_id, text="no game!")
+        return
+
+    assert "claim_settings" in chat_data
+    claim = interpret_claim(chat_data["game"], args)
+    user_id = update.message.from_user.id
+    position = chat_data["game"].get_position(player_id=user_id)
+    if not claim:
+        bot.send_message(chat_id=update.message.chat_id, text="invalid input!")
+        return
+    else:
+        blank, signs, cthulhu = claim
+        
+    if chat_data["claim_settings"]:
+        whose_claim = chat_data["game"].get_whose_claim()
+        # If claim is valid.
+        if position != -1 and (position == whose_claim or whose_claim == -1):
+            chat_data["game"].claim(position, blank, signs, cthulhu)
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=chat_data["game"].display_board())
+        else:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="you can't claim, dummy!")
+    elif not chat_data["claim_settings"]:
+        if position != -1:
+            chat_data["game"].claim(position, blank, signs, cthulhu)
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=chat_data["game"].display_board())
+        else:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="you're not even playing!")
+
+
+def blaim(bot, update, chat_data):
+    """
+    Posts name of player who needs to claim.
+    """
+    if is_game_ongoing(chat_data):
+        pos = chat_data["game"].whose_claim()
+        if pos < 0:
+            bot.send_message(chat_id=update.message.chat_id,
+                         text="anyone can claim")
+            return
+        # TODO: don't do this.
+        name = chat_data["game"].players[pos].get_name()
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="%s needs to claim" % name)
 
 
 def send_roles(bot, game, chat_data):
@@ -490,9 +614,17 @@ invest_handler = CommandHandler('invest', investigate,
                                 pass_chat_data=True, pass_args=True)
 dig_handler = CommandHandler('dig', investigate,
                              pass_chat_data=True, pass_args=True)
+claim_handler = CommandHandler('claim', claim, pass_chat_data=True,
+                               pass_args=True)
 dispatcher.add_handler(investigate_handler)
 dispatcher.add_handler(invest_handler)
 dispatcher.add_handler(dig_handler)
+dispatcher.add_handler(claim_handler)
+
+# Handlers for game settings.
+claimsettings_handler = CommandHandler('claimsettings', claimsettings,
+                                     pass_chat_data=True, pass_args=True)
+dispatcher.add_handler(claimsettings_handler)
 
 # Handlers for "hidden" commands.
 wee_handler = CommandHandler('wee', wee)

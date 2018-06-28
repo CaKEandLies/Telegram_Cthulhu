@@ -26,6 +26,7 @@ class Player:
         is_cultist - Is the player a cultist?
         hand - The player's current hand.
         player_id - An id corresponding to this player.
+        claim - A tuple representing the player's claim.
 
     # TODO: Implement a way to track whether this player can claim.
     """
@@ -39,6 +40,7 @@ class Player:
         self.is_cultist = is_cultist
         self.hand = Hand([])
         self.id = player_id
+        self.claim = (0, 0, 0)
 
     def __str__(self):
         """
@@ -70,12 +72,21 @@ class Player:
         revealed.
         """
         return self.hand.get_contents()
-    
+
     def display_full_hand(self):
         """
         Returns the entire contents of the hand, nicely-formatted.
         """
         return self.hand.get_full_contents()
+
+    def display_claim(self):
+        """
+        Displays the player's claim in emoji form.
+        """
+        blank, sign, cthulhu = self.claim
+        if blank == 0 and sign == 0 and cthulhu == 0:
+            return None
+        return (blank * "⚪️" + sign * "🔵" + cthulhu * "🔴 ")
 
     def get_id(self):
         """
@@ -100,6 +111,12 @@ class Player:
         if not isinstance(hand, Hand):
             raise TypeError("Argument must be of type Hand.")
         self.hand = hand
+   
+    def set_claim(self, blank, elder, cthulhu):
+        """
+        Set's this person's current claim.
+        """
+        self.claim = (blank, elder, cthulhu)
 
     def can_be_investigated(self):
         """
@@ -306,6 +323,9 @@ class Game:
         signs_remaining - Number of Elder Signs remaining.
         flashlight - The index of the player who has the flashlight.
         game_log - A representation of the game.
+        claims_on - Whether claims are enforced.
+        whose_claim - Which player currently needs to claim.
+        claim_start - The position of the player that started claims.
 
     TODO:
         Fix off-by-one errors, potentially.
@@ -326,7 +346,7 @@ class Game:
              7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
              10: player_10_roles}
 
-    def __init__(self, players, game_id=0):
+    def __init__(self, players, claims = False):
         """
         Initializes a game of Don't Mess With Cthulhu given player names.
 
@@ -354,10 +374,17 @@ class Game:
         self.flashlight = starting
         self.deck = Deck(num)
         self.signs_remaining = num
-        self.game_id = game_id
         self.moves = []
         self.game_log = "Roles: \n"
         self.round_number = 1
+        # If claims are enforced, set up who's claim it is.
+        self.claims_on = claims
+        if self.claims_on:
+            self.whose_claim = self.flashlight
+            self.claim_start = self.flashlight
+        else:
+            self.whose_claim = -1
+            self.claim_start = -1
         for i in range(num):
             self.game_log += self.players[i].get_name() + ": " + roles[i]
             self.game_log += "\n"
@@ -391,6 +418,9 @@ class Game:
         return result
     
     def get_log(self):
+        """
+        Returns a log of the game, which includes hands and roles.
+        """
         return self.game_log
 
     def can_investigate_position(self, position):
@@ -404,6 +434,12 @@ class Game:
         Returns the position of the flashlight.
         """
         return self.flashlight
+    
+    def get_whose_claim(self):
+        """
+        Returns whose claim it is.
+        """
+        return self.whose_claim
 
     def investigators_have_won(self):
         """
@@ -453,14 +489,35 @@ class Game:
             self.game_log += (self.players[i].get_name() + ": ")
             self.game_log += self.players[i].display_full_hand()
             self.game_log += "\n"
+        if self.claims_on:
+            self.whose_claim = self.flashlight
+            self.claim_start = self.flashlight
 
     def recollect_cards(self):
         """
-        Recollects the cards from a round.
+        Recollects the cards from a round and resets claims.
         """
         assert len(self.moves) == len(self.players)
         self.deck.return_cards(self.moves)
         self.moves = []
+        for player in self.players:
+            player.set_claim(0, 0, 0)
+            
+    def claim(self, pos, blank, elder, cthulhu):
+        """
+        Sets the claim for a player at position pos. If that player can't 
+        claim, do nothing.
+        """
+        if self.whose_claim == pos or self.whose_claim == -1:
+            self.players[pos].set_claim(blank, elder, cthulhu)
+        # If the next claim needs to be updated, do so.
+        if self.whose_claim == pos:
+            self.whose_claim += 1
+        # Wrap around the table.
+        if self.whose_claim == len(self.players):
+            self.whose_claim = 0
+        if self.whose_claim == self.claim_start:
+            self.whose_claim = -1
 
     def investigate(self, position):
         """
@@ -520,6 +577,9 @@ class Game:
             display += " : "
             display += player.display_hand()
             display += "\n"
+            if player.display_claim():
+                display += ("claimed: %s" % player.display_claim())
+                display += "\n"
         display += "Elder Signs remaining: %s" % self.signs_remaining
         return display
 
