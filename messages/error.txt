@@ -1,0 +1,1 @@
+If you're getting this message, this means the bot has failed in some unexpected way. It's creator has been notified. Terribly sorry about that!

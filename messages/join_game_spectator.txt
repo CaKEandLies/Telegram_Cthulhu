@@ -1,0 +1,1 @@
+You can't join a game you're a spectating. Would you like to /unspectate?

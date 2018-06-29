@@ -1,3 +1,5 @@
 This game of Cthulhu has begun! After each investigation, an updated board will be displayed, including who has the flashlight.
 
 /investigate player -- investigates player. <player> can contain either the player's nickname or their position at the table. /dig and /invest are also valid commands.
+
+/claim - Claim your hand. Can do so with one argument (C or a number of elder signs), or two (number of elder signs followed by number of cthulhus).

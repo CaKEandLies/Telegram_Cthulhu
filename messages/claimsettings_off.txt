@@ -1,0 +1,7 @@
+You've disabled forced claims, which means that using the /claim command is optional and players can update their claims at any time. To force players to claim in order before investigation can start, use the command "/claimsettings on".
+
+How to claim:
+/claim 2 - claims 2 elder signs
+/claim C - claims 1 cthulhu and 0 elder signs.
+/claim 1 1 - claims 1 elder sign and 1 cthulhu.
+/claim 2 C - claims 2 elder signs and 1 cthulhu.

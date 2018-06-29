@@ -1,0 +1,7 @@
+You've enabled forced claims, which means that players must claim in order before anyone can investigate or change their claim. To disable this, use the command "/claimsettings off".
+
+How to claim:
+/claim 2 - claims 2 elder signs
+/claim C - claims 1 cthulhu and 0 elder signs.
+/claim 1 1 - claims 1 elder sign and 1 cthulhu.
+/claim 2 C - claims 2 elder signs and 1 cthulhu.

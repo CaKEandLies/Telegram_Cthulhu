@@ -1,0 +1,1 @@
+There's no pending game for you to join. You can use /newgame to create a new game, if you wish.

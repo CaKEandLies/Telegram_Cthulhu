@@ -1,0 +1,1 @@
+Either there was no pending game for you to leave, or you weren't registered as a player.

@@ -6,10 +6,6 @@ joingame - joins a pending game
 unjoin - leave a pending game
 spectate - spectate a pending or ongoing game
 unspectate - stop spectating
-listplayers - list current players
-claimsettings - toggle whether claims are enforced
 startgame - start a pending game
 investigate - investigate another player
-claim - claim
-blaim - see who needs to claim
 endgame - end a game

@@ -1,0 +1,3 @@
+You can't start a new game because there's a game already ongoing. Would you like to /spectate?
+
+To cancel the ongoing game, hit /endgame.

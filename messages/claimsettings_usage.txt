@@ -1,0 +1,1 @@
+Use the command "/claimsettings on" to enforce claims and the command "/claimsettings off" to make claims optional.

@@ -1,0 +1,6 @@
+Hi, it looks like the nickname you submitted is invalid. Nicknames:
+  - must not be an integer number
+  - must be between 3 and 15 characters
+  - must not contain another player's nickname or be contained in another player's nickname.
+
+To join the game under a different nickname, use the command /joingame [nickname'

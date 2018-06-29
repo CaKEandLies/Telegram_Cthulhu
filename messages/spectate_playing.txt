@@ -1,0 +1,1 @@
+Hey, you can't spectate a game you're already a player in. Would you like to /unjoin?
