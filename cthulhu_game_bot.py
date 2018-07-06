@@ -9,8 +9,6 @@ This program implements a Telegram bot for games of Don't Mess With Cthulhu.
 TODO:
     Write more detailed messages in response to commands.
     Write flavortext.
-    Write a reset state helper function.
-    Actually use is_game_pending and is_game_ongoing.
 """
 
 import telegram
@@ -65,8 +63,10 @@ def reset_chat_data(chat_data):
     chat_data["spectators"] = []
     chat_data["game_is_pending"] = False
     chat_data["game_is_ongoing"] = False
+    chat_data["min_players"] = 3
+    chat_data["max_players"] = 10
     if "claim_settings" not in chat_data:
-        chat_data["claim_settings"] = False
+        chat_data["claim_settings"] = True
 
 
 def is_nickname_valid(name, user_id, chat_data):
@@ -149,13 +149,31 @@ def feedback(bot, update, args=None):
 
 
 ### Game-organizational functions. 
-def new_game(bot, update, chat_data=None):
+def new_game(bot, update, chat_data=None, args=None):
     """
     Starts a new game of Don't Mess with Cthulhu in the given chat.
     """
     # If no game exists, start one.
     if not is_game_ongoing(chat_data) and not is_game_pending(chat_data):
         reset_chat_data(chat_data)
+        # Set minimum and maximum players
+        if len(args) == 2:
+            try:
+                min_players = int(args[0])
+                max_players = int(args[1])
+                assert min_players <= max_players
+                assert min_players > 2
+                assert max_players < 10
+                chat_data["min_players"] = min_players
+                chat_data["max_players"] = max_players
+            except (ValueError, AssertionError) as e:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text=read_message("messages/new_usage.txt"))
+                return
+        elif len(args) != 0:
+            bot.send_message(chat_id=update.message.chat_id,
+                                 text=read_message("messages/new_usage.txt"))
+            return
         chat_data["game_is_pending"] = True
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/new_game.txt'))
@@ -181,10 +199,6 @@ def join_game(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/join_game_not_pending.txt'))
         return
-    if len(chat_data["pending_players"]) >= 10:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/join_game_full.txt'))
-        return
     # Ensure the user isn't already spectating.
     user_id = update.message.from_user.id
     if user_id in chat_data["spectators"]:
@@ -203,6 +217,8 @@ def join_game(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="Current player count: "
                          "%s" % len(chat_data["pending_players"]))
+        if len(chat_data["pending_players"]) == chat_data["max_players"]:
+            start_game(bot, update, chat_data)
     else:
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message("messages/nickname_invalid.txt"))
@@ -239,6 +255,9 @@ def spectate(bot, update, chat_data=None):
     elif update.message.from_user.id in chat_data["pending_players"]:
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message("messages/spectate_playing.txt"))
+    elif update.message.from_user.id in chat_data["spectators"]:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="You're already spectating!")
     # Add the player as a spectator if allowed, and send the game log so far.
     else:
         try:
@@ -292,7 +311,7 @@ def start_game(bot, update, chat_data=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/start_game_dne.txt'))
         return
-    if len(chat_data["pending_players"]) < 1:
+    if len(chat_data["pending_players"]) < chat_data["min_players"]:
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/start_game_too_few.txt'))
         return
@@ -325,6 +344,8 @@ def end_game(bot, update, chat_data=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text=chat_data["game"].get_log())
     reset_chat_data(chat_data)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="Any game has been ended. /newgame?")
 
 
 ### Functions that modify game settings.
@@ -359,7 +380,9 @@ def interpret_claim(game, args):
         return False
     elif len(args) == 1:
         # See if the first argument is a cthulhu claim.
-        if "C" in args[0]:
+        if "rocks" in args[0].lower():
+            return (hand_size, 0, 0)
+        elif "c" in args[0].lower():
             return (hand_size - 1, 0, 1)
         # Interpret first number as number of elder signs.
         try:
@@ -376,7 +399,7 @@ def interpret_claim(game, args):
         except ValueError as e:
             return False
         # The second can be either C or a number.
-        if "C" in args[1]:
+        if "c" in args[1].lower():
             cthulhus = 1
         else:
             try:
@@ -445,6 +468,30 @@ def blaim(bot, update, chat_data):
         name = chat_data["game"].players[pos].get_name()
         bot.send_message(chat_id=update.message.chat_id,
                          text="%s needs to claim." % name)
+
+
+def blame(bot, update, chat_data):
+    """
+    Posts name of player who has next move.
+    """
+    if is_game_ongoing(chat_data):
+        pos = chat_data["game"].get_whose_claim()
+        if pos < 0:
+            pos = chat_data["game"].where_flashlight()
+        name = chat_data["game"].players[pos].get_name()
+        player_id = chat_data["game"].players[pos].get_id()
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="[{}](tg://user?id={})".format(name, player_id),
+                         parse_mode=telegram.ParseMode.MARKDOWN)
+
+
+def display(bot, update, chat_data):
+    """
+    Displays the board.
+    """
+    if is_game_ongoing(chat_data):
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=chat_data["game"].display_board())
 
 
 def send_roles(bot, game, chat_data):
@@ -517,7 +564,7 @@ def investigate(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text="You don't have the flashlight, dummy!")
         return False
-    name = args[0]
+    name = " ".join(args)
     pos = chat_data["game"].is_valid_name(name)
     if pos == -1:
         bot.send_message(chat_id=update.message.chat_id,
@@ -590,6 +637,7 @@ def send_dm(bot, update):
                      text="sliding into those dungeon masters!")
 
 
+### Getting the bot up
 # Set up the bot.
 # If you want to use this bot yourself, please message me directly.
 token = open('ignore/token.txt', 'r').read()
@@ -603,6 +651,13 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
                     filename='ignore/logging.txt', filemode='a')
 
 
+# Command synonyms, where they apply.
+joingame_synonyms = ["joingame", "join", "addme", "hibitch"]
+unjoin_synonyms = ["unjoin", "byebitch"]
+investigate_synonyms = ["investigate", "invest", "inv", "dig", "dog", "canine",
+                        "do"]
+claim_synonyms = ["claim", "c"]
+
 # Logistical command handlers.
 start_handler = CommandHandler('start', start)
 rules_handler = CommandHandler('rules', rules)
@@ -614,10 +669,11 @@ dispatcher.add_handler(help_handler)
 dispatcher.add_handler(feedback_handler)
 
 # Handlers related to organizing a game.
-newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True)
-joingame_handler = CommandHandler('joingame', join_game, pass_chat_data=True,
-                                  pass_args=True)
-unjoin_handler = CommandHandler('unjoin', unjoin, pass_chat_data=True)
+newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True,
+                                 pass_args=True)
+joingame_handler = CommandHandler(joingame_synonyms, join_game, 
+                                  pass_chat_data=True, pass_args=True)
+unjoin_handler = CommandHandler(unjoin_synonyms, unjoin, pass_chat_data=True)
 spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
 unspectate_handler = CommandHandler('unspectate', unspectate, pass_chat_data=True)
 pending_handler = CommandHandler('listplayers', pending_players,
@@ -635,20 +691,16 @@ dispatcher.add_handler(startgame_handler)
 dispatcher.add_handler(endgame_handler)
 
 # Handlers for in-game commands.
-investigate_handler = CommandHandler('investigate', investigate,
+investigate_handler = CommandHandler(investigate_synonyms, investigate,
                                      pass_chat_data=True, pass_args=True)
-invest_handler = CommandHandler('invest', investigate,
-                                pass_chat_data=True, pass_args=True)
-dig_handler = CommandHandler('dig', investigate,
-                             pass_chat_data=True, pass_args=True)
-claim_handler = CommandHandler('claim', claim, pass_chat_data=True,
+claim_handler = CommandHandler(claim_synonyms, claim, pass_chat_data=True,
                                pass_args=True)
-blaim_handler = CommandHandler('blaim', blaim, pass_chat_data=True)
+blaim_handler = CommandHandler('blame', blame, pass_chat_data=True)
+display_handler = CommandHandler("display", display, pass_chat_data=True)
 dispatcher.add_handler(investigate_handler)
-dispatcher.add_handler(invest_handler)
-dispatcher.add_handler(dig_handler)
 dispatcher.add_handler(claim_handler)
 dispatcher.add_handler(blaim_handler)
+dispatcher.add_handler(display_handler)
 
 # Handlers for game settings.
 claimsettings_handler = CommandHandler('claimsettings', claimsettings,

@@ -1,0 +1,3 @@
+/newgame creates a new game for 3-10 players.
+
+/newgame n m creates a new game for n-m players, and will automatically start at m players.

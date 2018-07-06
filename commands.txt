@@ -4,8 +4,14 @@ rules - how to play
 newgame - creates a pending game in this chat
 joingame - joins a pending game
 unjoin - leave a pending game
+listplayers - list players
 spectate - spectate a pending or ongoing game
 unspectate - stop spectating
 startgame - start a pending game
 investigate - investigate another player
+claim - claim your hand
+blame - who's holding up the game?
+display - display the board.
+claimsettings - change whether claims are enforced
 endgame - end a game
+feedback - submit feedback on this bot
