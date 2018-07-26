@@ -162,8 +162,8 @@ def new_game(bot, update, chat_data=None, args=None):
                 min_players = int(args[0])
                 max_players = int(args[1])
                 assert min_players <= max_players
-                assert min_players > 2
-                assert max_players < 10
+                assert min_players >= 3
+                assert max_players <= 10
                 chat_data["min_players"] = min_players
                 chat_data["max_players"] = max_players
             except (ValueError, AssertionError) as e:
@@ -655,8 +655,9 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
 joingame_synonyms = ["joingame", "join", "addme", "hibitch"]
 unjoin_synonyms = ["unjoin", "byebitch"]
 investigate_synonyms = ["investigate", "invest", "inv", "dig", "dog", "canine",
-                        "do"]
+                        "do", "vore", "nom"]
 claim_synonyms = ["claim", "c"]
+blame_synonyms = ["blaim", "blame", "blam"]
 
 # Logistical command handlers.
 start_handler = CommandHandler('start', start)
@@ -695,7 +696,7 @@ investigate_handler = CommandHandler(investigate_synonyms, investigate,
                                      pass_chat_data=True, pass_args=True)
 claim_handler = CommandHandler(claim_synonyms, claim, pass_chat_data=True,
                                pass_args=True)
-blaim_handler = CommandHandler('blame', blame, pass_chat_data=True)
+blaim_handler = CommandHandler(blame_synonyms, blame, pass_chat_data=True)
 display_handler = CommandHandler("display", display, pass_chat_data=True)
 dispatcher.add_handler(investigate_handler)
 dispatcher.add_handler(claim_handler)
