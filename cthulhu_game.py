@@ -28,7 +28,7 @@ class Player:
     def __init__(self, name, has_flashlight, is_cultist, player_id=0):
         """
         Initializes an instance of the Player class.
-        
+
         @param name - The player's name.
         @param has_flashlight - Does the player start with it?
         @param is_cultist - Whether the player is a cultist.
@@ -75,7 +75,7 @@ class Player:
     def display_full_hand(self):
         """
         Returns the entire contents of the hand, nicely-formatted.
-        
+
         Unlike display_hand, this displays the entire contents, and unlike
         get_hand, this is nicely-formatted.
         """
@@ -113,7 +113,7 @@ class Player:
         if not isinstance(hand, Hand):
             raise TypeError("Argument must be of type Hand.")
         self.hand = hand
-   
+
     def set_claim(self, blank, elder, cthulhu):
         """
         Set's this person's current claim.
@@ -227,7 +227,7 @@ class Hand:
             else:
                 hand += "⚫"
         return hand
-    
+
     def get_full_contents(self):
         """
         Returns nicely-formatted contents of the entire hand, sorted.
@@ -333,22 +333,26 @@ class Game:
         whose_claim - Which player currently needs to claim.
         claim_start - The position of the player that started claims.
     """
-    # Role breakdowns for each player count. Note that 1/2 player games 
+    # Role breakdowns for each player count. Note that 1/2 player games
     # do not exist but may be used for testing.
-    player_1_roles = ["Investigator"] * 1 + ["Cultist"] * 1
-    player_2_roles = ["Investigator"] * 1 + ["Cultist"] * 1
-    player_3_roles = ["Investigator"] * 3 + ["Cultist"] * 2
-    player_4_roles = ["Investigator"] * 3 + ["Cultist"] * 2
-    player_5_roles = ["Investigator"] * 4 + ["Cultist"] * 2
-    player_6_roles = ["Investigator"] * 4 + ["Cultist"] * 2
-    player_7_roles = ["Investigator"] * 5 + ["Cultist"] * 3
-    player_8_roles = ["Investigator"] * 5 + ["Cultist"] * 3
-    player_9_roles = ["Investigator"] * 6 + ["Cultist"] * 4
-    player_10_roles = ["Investigator"] * 7 + ["Cultist"] * 4
-    ROLES = {1: player_1_roles, 2: player_2_roles, 3: player_3_roles,
-             4: player_4_roles, 5: player_5_roles, 6: player_6_roles,
-             7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
-             10: player_10_roles}
+    breakdown = (
+        # player count, investigator count, cultist count
+        (1, 1, 1),
+        (2, 1, 1),
+        (3, 3, 2),
+        (4, 3, 2),
+        (5, 4, 2),
+        (6, 4, 2),
+        (7, 5, 3),
+        (8, 5, 3),
+        (9, 6, 4),
+        (10, 7, 4),
+    )
+
+    ROLES = {
+        player: ["Investigator"] * inv + ["Cultist"] * cul
+        for (player, inv, cul) in breakdown
+    }
 
     def __init__(self, players, claims = False):
         """
@@ -359,7 +363,7 @@ class Game:
 
         @raises Exception - if incorrect number of players.
         """
-        
+
         num = len(players)
         if num > 10 or num < 1:
             raise Exception("Incorrect number of players!")
@@ -384,9 +388,9 @@ class Game:
         self.moves = []
         self.game_log = "Roles: \n"
         self.round_number = 1
-        
-        # If claims are enforced, set up who's claim it is. Otherwise, 
-        # anyone can claim. 
+
+        # If claims are enforced, set up who's claim it is. Otherwise,
+        # anyone can claim.
         self.claims_on = claims
         if self.claims_on:
             self.whose_claim = self.flashlight
@@ -416,7 +420,7 @@ class Game:
         for player in self.players:
             hands[player.get_id()] = player.get_hand()
         return hands
-    
+
     def get_formatted_hands(self):
         """
         Returns a formatted string of players hands.
@@ -426,7 +430,7 @@ class Game:
             result += player.get_name() + ": "
             result += player.display_full_hand() + "\n"
         return result
-    
+
     def get_log(self):
         """
         Returns a log of the game, which includes hands and roles.
@@ -436,7 +440,7 @@ class Game:
     def can_investigate_position(self, position):
         """
         Returns whether the player at position can be investigated.
-        
+
         @param position - the player's position.
         """
         return self.players[position].can_be_investigated()
@@ -446,7 +450,7 @@ class Game:
         Returns the position of the flashlight.
         """
         return self.flashlight
-    
+
     def get_whose_claim(self):
         """
         Returns whose claim it is.
@@ -468,7 +472,7 @@ class Game:
     def is_valid_name(self, name):
         """
         Returns whether the name is a valid player.
-        
+
         @name - the player's name.
         """
         for i, player in enumerate(self.players):
@@ -519,7 +523,7 @@ class Game:
         self.moves = []
         for player in self.players:
             player.set_claim(0, 0, 0)
-            
+
     def claim(self, pos, blank, elder, cthulhu):
         """
         Sets the claim for a player at position pos. Do nothing if disallowed.
@@ -559,7 +563,7 @@ class Game:
         if "E" in move:
             self.signs_remaining -= 1
         return move
-    
+
     def redeal(self):
         """
         If needed, recollect and deal cards. Returns True if done.
@@ -612,7 +616,7 @@ class Game:
     def print_board(self):
         """
         Prints a simple representation of the board.
-        
+
         Mostly obsolete.
         """
         for i in range(len(self.players)):
