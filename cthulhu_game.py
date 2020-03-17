@@ -335,20 +335,26 @@ class Game:
     """
     # Role breakdowns for each player count. Note that 1/2 player games 
     # do not exist but may be used for testing.
-    player_1_roles = ["Investigator"] * 1 + ["Cultist"] * 1
-    player_2_roles = ["Investigator"] * 1 + ["Cultist"] * 1
-    player_3_roles = ["Investigator"] * 3 + ["Cultist"] * 2
-    player_4_roles = ["Investigator"] * 3 + ["Cultist"] * 2
-    player_5_roles = ["Investigator"] * 4 + ["Cultist"] * 2
-    player_6_roles = ["Investigator"] * 4 + ["Cultist"] * 2
-    player_7_roles = ["Investigator"] * 5 + ["Cultist"] * 3
-    player_8_roles = ["Investigator"] * 5 + ["Cultist"] * 3
-    player_9_roles = ["Investigator"] * 6 + ["Cultist"] * 4
-    player_10_roles = ["Investigator"] * 7 + ["Cultist"] * 4
-    ROLES = {1: player_1_roles, 2: player_2_roles, 3: player_3_roles,
-             4: player_4_roles, 5: player_5_roles, 6: player_6_roles,
-             7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
-             10: player_10_roles}
+    breakdown = (
+        # player count, investigator count, cultist count
+        (1, 1, 1),
+        (2, 1, 1),
+        (3, 3, 2),
+        (4, 3, 2),
+        (5, 4, 2),
+        (6, 4, 2),
+        (7, 5, 3),
+        (8, 5, 3),
+        (9, 6, 4),
+        (10, 7, 4),
+    )
+    INVESTIGATOR = "Investigator"
+    CULTIST = "Cultist"
+
+    ROLES = {
+        player: [INVESTIGATOR] * inv + [CULTIST] * cul
+        for (player, inv, cul) in breakdown
+    }
 
     def __init__(self, players, claims = False):
         """
