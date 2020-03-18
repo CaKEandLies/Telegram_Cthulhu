@@ -690,16 +690,7 @@ class TelegramBot(BotBase):
 
 
 ### Getting the bot up
-def run_cthulhu_telegram():
-    # Set up the bot.
-    # If you want to use this bot yourself, please message me directly.
-    token = open('ignore/token.txt', 'r').read()
-    bot = TelegramBot(token)
-
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
-                        '%(message)s', level=logging.INFO,
-                        filename='ignore/logging.txt', filemode='a')
-
+def add_cthulhu_handlers(bot):
     # Command synonyms, where they apply.
     joingame_synonyms = ["joingame", "join", "addme", "hibitch"]
     unjoin_synonyms = ["unjoin", "byebitch"]
@@ -738,6 +729,22 @@ def run_cthulhu_telegram():
     bot.add_handler(hoo, "hoo")
     bot.add_handler(hi, "hi")
     bot.add_handler(send_dm, "send_dm")
+
+
+def add_logging():
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
+                        '%(message)s', level=logging.INFO,
+                        filename='ignore/logging.txt', filemode='a')
+
+
+def run_cthulhu_telegram():
+    # Set up the bot.
+    # If you want to use this bot yourself, please message me directly.
+    token = open('ignore/token.txt', 'r').read()
+    bot = TelegramBot(token)
+
+    add_logging()
+    add_cthulhu_handlers(bot)
 
 
 # Actually run Cthulhu Telegram Bot
