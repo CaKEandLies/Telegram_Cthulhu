@@ -646,82 +646,87 @@ def send_dm(bot, update):
 
 
 ### Getting the bot up
-# Set up the bot.
-# If you want to use this bot yourself, please message me directly.
-token = open('ignore/token.txt', 'r').read()
-bot = telegram.Bot(token=token)
+def run_cthulhu_telegram():
+    # Set up the bot.
+    # If you want to use this bot yourself, please message me directly.
+    token = open('ignore/token.txt', 'r').read()
+    bot = telegram.Bot(token=token)
 
-# Create an updater to fetch updates.
-updater = Updater(token=token)
-dispatcher = updater.dispatcher
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
-                    '%(message)s', level=logging.INFO,
-                    filename='ignore/logging.txt', filemode='a')
+    # Create an updater to fetch updates.
+    updater = Updater(token=token)
+    dispatcher = updater.dispatcher
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
+                        '%(message)s', level=logging.INFO,
+                        filename='ignore/logging.txt', filemode='a')
 
 
-# Command synonyms, where they apply.
-joingame_synonyms = ["joingame", "join", "addme", "hibitch"]
-unjoin_synonyms = ["unjoin", "byebitch"]
-investigate_synonyms = ["investigate", "invest", "inv", "dig", "dog", "canine",
-                        "do", "vore", "nom"]
-claim_synonyms = ["claim", "c"]
-blame_synonyms = ["blaim", "blame", "blam"]
+    # Command synonyms, where they apply.
+    joingame_synonyms = ["joingame", "join", "addme", "hibitch"]
+    unjoin_synonyms = ["unjoin", "byebitch"]
+    investigate_synonyms = ["investigate", "invest", "inv", "dig", "dog", "canine",
+                            "do", "vore", "nom"]
+    claim_synonyms = ["claim", "c"]
+    blame_synonyms = ["blaim", "blame", "blam"]
 
-# Logistical command handlers.
-start_handler = CommandHandler('start', start)
-rules_handler = CommandHandler('rules', rules)
-help_handler = CommandHandler('help', help_message)
-feedback_handler = CommandHandler('feedback', feedback, pass_args=True)
-dispatcher.add_handler(start_handler)
-dispatcher.add_handler(rules_handler)
-dispatcher.add_handler(help_handler)
-dispatcher.add_handler(feedback_handler)
+    # Logistical command handlers.
+    start_handler = CommandHandler('start', start)
+    rules_handler = CommandHandler('rules', rules)
+    help_handler = CommandHandler('help', help_message)
+    feedback_handler = CommandHandler('feedback', feedback, pass_args=True)
+    dispatcher.add_handler(start_handler)
+    dispatcher.add_handler(rules_handler)
+    dispatcher.add_handler(help_handler)
+    dispatcher.add_handler(feedback_handler)
 
-# Handlers related to organizing a game.
-newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True,
-                                 pass_args=True)
-joingame_handler = CommandHandler(joingame_synonyms, join_game, 
-                                  pass_chat_data=True, pass_args=True)
-unjoin_handler = CommandHandler(unjoin_synonyms, unjoin, pass_chat_data=True)
-spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
-unspectate_handler = CommandHandler('unspectate', unspectate, pass_chat_data=True)
-pending_handler = CommandHandler('listplayers', pending_players,
-                                 pass_chat_data=True)
-startgame_handler = CommandHandler('startgame', start_game,
-                                   pass_chat_data=True,)
-endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
-dispatcher.add_handler(newgame_handler)
-dispatcher.add_handler(joingame_handler)
-dispatcher.add_handler(unjoin_handler)
-dispatcher.add_handler(spectate_handler)
-dispatcher.add_handler(unspectate_handler)
-dispatcher.add_handler(pending_handler)
-dispatcher.add_handler(startgame_handler)
-dispatcher.add_handler(endgame_handler)
+    # Handlers related to organizing a game.
+    newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True,
+                                     pass_args=True)
+    joingame_handler = CommandHandler(joingame_synonyms, join_game,
+                                      pass_chat_data=True, pass_args=True)
+    unjoin_handler = CommandHandler(unjoin_synonyms, unjoin, pass_chat_data=True)
+    spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
+    unspectate_handler = CommandHandler('unspectate', unspectate, pass_chat_data=True)
+    pending_handler = CommandHandler('listplayers', pending_players,
+                                     pass_chat_data=True)
+    startgame_handler = CommandHandler('startgame', start_game,
+                                       pass_chat_data=True,)
+    endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
+    dispatcher.add_handler(newgame_handler)
+    dispatcher.add_handler(joingame_handler)
+    dispatcher.add_handler(unjoin_handler)
+    dispatcher.add_handler(spectate_handler)
+    dispatcher.add_handler(unspectate_handler)
+    dispatcher.add_handler(pending_handler)
+    dispatcher.add_handler(startgame_handler)
+    dispatcher.add_handler(endgame_handler)
 
-# Handlers for in-game commands.
-investigate_handler = CommandHandler(investigate_synonyms, investigate,
-                                     pass_chat_data=True, pass_args=True)
-claim_handler = CommandHandler(claim_synonyms, claim, pass_chat_data=True,
-                               pass_args=True)
-blaim_handler = CommandHandler(blame_synonyms, blame, pass_chat_data=True)
-display_handler = CommandHandler("display", display, pass_chat_data=True)
-dispatcher.add_handler(investigate_handler)
-dispatcher.add_handler(claim_handler)
-dispatcher.add_handler(blaim_handler)
-dispatcher.add_handler(display_handler)
+    # Handlers for in-game commands.
+    investigate_handler = CommandHandler(investigate_synonyms, investigate,
+                                         pass_chat_data=True, pass_args=True)
+    claim_handler = CommandHandler(claim_synonyms, claim, pass_chat_data=True,
+                                   pass_args=True)
+    blaim_handler = CommandHandler(blame_synonyms, blame, pass_chat_data=True)
+    display_handler = CommandHandler("display", display, pass_chat_data=True)
+    dispatcher.add_handler(investigate_handler)
+    dispatcher.add_handler(claim_handler)
+    dispatcher.add_handler(blaim_handler)
+    dispatcher.add_handler(display_handler)
 
-# Handlers for game settings.
-claimsettings_handler = CommandHandler('claimsettings', claimsettings,
-                                     pass_chat_data=True, pass_args=True)
-dispatcher.add_handler(claimsettings_handler)
+    # Handlers for game settings.
+    claimsettings_handler = CommandHandler('claimsettings', claimsettings,
+                                         pass_chat_data=True, pass_args=True)
+    dispatcher.add_handler(claimsettings_handler)
 
-# Handlers for "hidden" commands.
-wee_handler = CommandHandler('wee', wee)
-hoo_handler = CommandHandler('hoo', hoo)
-hi_handler = CommandHandler('hi', hi)
-dm_handler = CommandHandler('send_dm', send_dm)
-dispatcher.add_handler(wee_handler)
-dispatcher.add_handler(hoo_handler)
-dispatcher.add_handler(hi_handler)
-dispatcher.add_handler(dm_handler)
+    # Handlers for "hidden" commands.
+    wee_handler = CommandHandler('wee', wee)
+    hoo_handler = CommandHandler('hoo', hoo)
+    hi_handler = CommandHandler('hi', hi)
+    dm_handler = CommandHandler('send_dm', send_dm)
+    dispatcher.add_handler(wee_handler)
+    dispatcher.add_handler(hoo_handler)
+    dispatcher.add_handler(hi_handler)
+    dispatcher.add_handler(dm_handler)
+
+# Actually run Cthulhu Telegram Bot
+if __name__ == '__main__':
+    run_cthulhu_telegram()
