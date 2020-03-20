@@ -441,7 +441,7 @@ def blame(bot, chat_id, chat_data, **kwargs):
             pos = chat_data[GAME].where_flashlight()
         name = chat_data[GAME].players[pos].get_name()
         player_id = chat_data[GAME].players[pos].get_id()
-        bot.send_message(chat_id, "[{}](tg://user?id={})".format(name, player_id), markdown=True)
+        bot.tag_user(chat_id, player_id, name)
 
 
 def display(bot, chat_id, chat_data, **kwargs):
@@ -597,6 +597,10 @@ class BotBase(object):
     def get_icon_map(self):
         # should be overwritten, but won't break if it's not passed
         return None
+
+    def tag_user(self, chat_id, user_id, name):
+        """ Tag a given user by a given name in a given chat """
+        raise NotImplementedError("bot needs to be able to tag users")
 
     def send_message(self, chat, text, **kwargs):
         """
