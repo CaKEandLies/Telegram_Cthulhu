@@ -4,6 +4,8 @@ import time
 
 from slackclient import SlackClient
 
+from cthulhu_game import Icon
+
 from cthulhu_game_bot_base import (
     BotBase,
     add_logging,
@@ -45,6 +47,16 @@ class SlackBot(BotBase):
 
         # we're going to keep a map of (keyword --> handler)
         self.handlers = {}
+
+    def get_icon_map(self):
+        # slack uses slack emojis
+        return {
+            Icon.FLASHLIGHT: ":flashlight:",
+            Icon.HIDDEN: ":black_circle:",
+            Icon.BLANK: ":white_circle:",
+            Icon.SIGN: ":large_blue_circle:",
+            Icon.CTHULHU: ":red_circle:",
+        }
 
     def send_message(self, chat, text, markdown=False, **kwargs):
         # convert text of telegram commands into slack commands

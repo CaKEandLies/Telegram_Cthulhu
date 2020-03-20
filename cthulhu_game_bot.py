@@ -3,6 +3,8 @@ from telegram.ext import Updater
 from telegram.ext import CommandHandler
 
 
+from cthulhu_game import Icon
+
 from cthulhu_game_bot_base import (
     BotBase,
     add_logging,
@@ -17,7 +19,18 @@ class TelegramBot(BotBase):
 
         # Create an updater to fetch updates.
         updater = Updater(token=token)
+
         self.dispatcher = updater.dispatcher
+
+    def get_icon_map(self):
+        # telegram uses emojis because sure
+        return {
+            Icon.FLASHLIGHT: "🔦",
+            Icon.HIDDEN: "⚫",
+            Icon.BLANK: "⚪️",
+            Icon.SIGN: "🔵",
+            Icon.CTHULHU: "🔴",
+        }
 
     def send_message(self, chat, text, markdown=False, **kwargs):
         telegram_kwargs = {

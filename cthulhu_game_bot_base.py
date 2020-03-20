@@ -302,8 +302,10 @@ def start_game(bot, chat_id, chat_data=None, **kwargs):
     else:
         chat_data[GAME_ONGOING] = True
         chat_data[GAME_PENDING] = False
-        chat_data[GAME] = cg.Game(chat_data[PENDING_PLAYERS],
-                                    claims=chat_data[CLAIM_SETTINGS])
+        chat_data[GAME] = cg.Game(
+            chat_data[PENDING_PLAYERS],
+            claims=chat_data[CLAIM_SETTINGS],
+            icon_map=bot.get_icon_map())
         begin_game(bot, chat_data[GAME], chat_data)
         bot.send_message_from_file(chat_id, 'messages/start_game.txt')
         bot.send_message(chat_id, chat_data[GAME].display_board())
@@ -591,6 +593,10 @@ class BotBase(object):
     def __init__(self, *args, **kwargs):
         # do nothing at this level
         pass
+
+    def get_icon_map(self):
+        # should be overwritten, but won't break if it's not passed
+        return None
 
     def send_message(self, chat, text, **kwargs):
         """

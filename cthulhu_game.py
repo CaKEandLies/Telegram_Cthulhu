@@ -11,6 +11,27 @@ and Cthulhu as "C".
 """
 import random
 
+# list of supported
+
+class Icon(object):
+    """
+    Constants to refer to the icons used in display code, which may change across platforms
+    """
+
+    FLASHLIGHT = "FLASHLIGHT"
+    HIDDEN = "HIDDEN"
+    BLANK = "BLANK"
+    SIGN = "SIGN"
+    CTHULHU = "CTHULHU"
+
+    ALL = [
+        FLASHLIGHT,
+        HIDDEN,
+        BLANK,
+        SIGN,
+        CTHULHU,
+    ]
+
 
 class Player:
     """
@@ -25,7 +46,7 @@ class Player:
         claim - A tuple representing the player's claim.
     """
 
-    def __init__(self, name, has_flashlight, is_cultist, player_id=0):
+    def __init__(self, name, has_flashlight, is_cultist, player_id=0, icon_map=None):
         """
         Initializes an instance of the Player class.
 
@@ -37,8 +58,9 @@ class Player:
         self.name = name
         self.has_flashlight = has_flashlight
         self.is_cultist = is_cultist
-        self.hand = Hand([])
+        self.hand = Hand([], icon_map=icon_map)
         self.id = player_id
+        self.icon_map = icon_map
         self.claim = (0, 0, 0)
 
     def __str__(self):
@@ -88,7 +110,7 @@ class Player:
         blank, sign, cthulhu = self.claim
         if blank == 0 and sign == 0 and cthulhu == 0:
             return None
-        return (blank * "⚪️" + sign * "🔵" + cthulhu * "🔴 ")
+        return (blank * self.icon_map.get(Icon.HIDDEN) + sign * self.icon_map.get(Icon.SIGN) + cthulhu * self.icon_map.get(Icon.CTHULHU))
 
     def get_id(self):
         """
@@ -158,7 +180,7 @@ class Hand:
         picked - Number of times this hand has been picked in this round.
     """
 
-    def __init__(self, contents):
+    def __init__(self, contents, icon_map=None):
         """
         Initializes a hand given a list of contents.
 
@@ -184,6 +206,8 @@ class Hand:
         for element in contents:
             self.contents.append(element)
         random.shuffle(self.contents)
+
+        self.icon_map = icon_map
 
     def get_blank(self):
         """
@@ -218,14 +242,14 @@ class Hand:
             # Display only revealed cards.
             if i < self.picked:
                 if "-" in card:
-                    hand += "⚪️"
+                    hand += self.icon_map.get(Icon.BLANK)
                 elif "E" in card:
-                    hand += "🔵"
+                    hand += self.icon_map.get(Icon.SIGN)
                 elif "C" in card:
-                    hand += "🔴"
+                    hand += self.icon_map.get(Icon.CTHULHU)
             # All unrevealed cards are blank.
             else:
-                hand += "⚫"
+                hand += self.icon_map.get(Icon.HIDDEN)
         return hand
 
     def get_full_contents(self):
@@ -233,9 +257,9 @@ class Hand:
         Returns nicely-formatted contents of the entire hand, sorted.
         """
         hand = ""
-        hand = hand + self.get_blank() * "⚪️"
-        hand = hand + self.get_elder() * "🔵"
-        hand = hand + self.get_cthulhu() * "🔴"
+        hand = hand + self.get_blank() * self.icon_map.get(Icon.BLANK)
+        hand = hand + self.get_elder() * self.icon_map.get(Icon.SIGN)
+        hand = hand + self.get_cthulhu() * self.icon_map.get(Icon.CTHULHU)
         return hand
 
     def pick_card(self):
@@ -263,7 +287,7 @@ class Deck:
         round_count - how many rounds have previously been played.
     """
 
-    def __init__(self, num_players):
+    def __init__(self, num_players, icon_map=None):
         """
         initializes  deck for the given number of players.
 
@@ -279,6 +303,7 @@ class Deck:
             self.cthulhus = 1
         self.blanks = (5*num_players) - self.signs - self.cthulhus
         self.num_players = num_players
+        self.icon_map = icon_map
 
     def deal(self):
         """
@@ -293,7 +318,7 @@ class Deck:
         random.shuffle(deck)
         hands = []
         for i in range(n_players):
-            hands.append(Hand(deck[i * num_cards: (i+1) * num_cards]))
+            hands.append(Hand(deck[i * num_cards: (i+1) * num_cards], icon_map=self.icon_map))
 
         self.round_count += 1
         return hands
@@ -354,15 +379,24 @@ class Game:
         for (player, inv, cul) in breakdown
     }
 
-    def __init__(self, players, claims = False):
+    def __init__(self, players, claims=False, icon_map=None):
         """
         Initializes a game of Don't Mess With Cthulhu given player names.
 
         @param players - A dictionary of player ids: nicknames
         @param claims - Whether claims are strictly enforced
+        @param icon_map - A map of how to display our icons
 
         @raises Exception - if incorrect number of players.
         """
+
+        # if we didn't pass an icon map, default it to their names
+        if icon_map is None:
+            icon_map = {
+                icon: icon
+                for icon in Icon.ALL
+            }
+        self.icon_map = icon_map
 
         num = len(players)
         if num > 10 or num < 1:
@@ -378,12 +412,13 @@ class Game:
             # Initialize a player for each in the list.
             self.players.append(Player(name, position == starting,
                                        "Cultist" in roles[position],
-                                       player_id=user_id))
+                                       player_id=user_id,
+                                       icon_map=icon_map))
             position += 1
         # Set up a blank gamestate with the flashlight starting at a random
         # player.
         self.flashlight = starting
-        self.deck = Deck(num)
+        self.deck = Deck(num, icon_map=self.icon_map)
         self.signs_remaining = num
         self.moves = []
         self.game_log = "Roles: \n"
@@ -602,7 +637,7 @@ class Game:
             display += " : "
             display += player.get_name()
             if self.flashlight == i:
-                display += " (🔦) "
+                display += " ({}) ".format(self.icon_map.get(Icon.FLASHLIGHT))
             display += " : "
             display += player.display_hand()
             display += "\n"
