@@ -59,7 +59,7 @@ class SlackBot(BotBase):
         }
 
     def tag_user(self, chat_id, user_id, name):
-        return bot.send_message(chat_id, "{} (<@{}>)".format(name, user_id))
+        return self.send_message(chat_id, "{} (<@{}>)".format(name, user_id))
 
     def send_message(self, chat, text, markdown=False, **kwargs):
         # convert text of telegram commands into slack commands

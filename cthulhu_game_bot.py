@@ -33,7 +33,7 @@ class TelegramBot(BotBase):
         }
 
     def tag_user(self, chat_id, user_id, name):
-        return bot.send_message(chat_id, "[{}](tg://user?id={})".format(name, player_id), markdown=True)
+        return self.send_message(chat_id, "[{}](tg://user?id={})".format(name, player_id), markdown=True)
 
     def send_message(self, chat, text, markdown=False, **kwargs):
         telegram_kwargs = {
