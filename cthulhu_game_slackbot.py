@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import os
 import time
 
 from slackclient import SlackClient
@@ -25,11 +26,26 @@ def convert_telegram_commands_to_slack_commands(text, botname):
 
 class SlackBot(BotBase):
 
-    def __init__(self, token, username):
+    def __init__(self, token, username, announce_channel=None):
         # we need our token and our username
         self.client = SlackClient(token)
         self.username = username
 
+        # we need our announce channel, if we provided one
+        self.announce_channel = announce_channel
+
+        # we're going to maintain chat data ourselves, unlike telegram which sends it around
+        self.chat_data = {}
+
+        # we're going to keep a map of (keyword --> handler)
+        self.handlers = {}
+
+        # we'll eventually get user info
+        self.names_to_ids = None
+        self.ids_to_names = None
+        self.user_id = None
+
+    def user_init(self):
         # get user name <--> ID mappings
         users = self.client.api_call("users.list").get("members")
         self.names_to_ids = {
@@ -41,12 +57,6 @@ class SlackBot(BotBase):
             for user in users
         }
         self.user_id = self.names_to_ids[self.username]
-
-        # we're going to maintain chat data ourselves, unlike telegram which sends it around
-        self.chat_data = {}
-
-        # we're going to keep a map of (keyword --> handler)
-        self.handlers = {}
 
     def get_icon_map(self):
         # slack uses slack emojis
@@ -93,6 +103,25 @@ class SlackBot(BotBase):
         else:
             print("Connection Failed :(")
 
+        # init our user information now that we've connected
+        self.user_init()
+
+        # if we have an announce channel, announce our existence now
+        if self.announce_channel is not None:
+            channels = self.client.api_call("conversations.list").get("channels")
+
+            announce_id = None
+            for channel in channels:
+                if channel.get("name") == self.announce_channel:
+                    announce_id = channel.get("id")
+                    break
+
+            if announce_id is not None:
+                self.send_message(announce_id, "CthulhuBot has started up!")
+            else:
+                print("Could not find announce channel :(")
+
+        # enter our main loop
         while True:
             time.sleep(1)
             for message in self.client.rtm_read():
@@ -144,7 +173,15 @@ def run_cthulhu_slack():
         token = f.read().strip()
     with open("ignore/slack_username.txt") as f:
         botname = f.read().strip()
-    bot = SlackBot(token, botname)
+
+    # we may have a channel to announce our bot's existence in
+    announce_path = "ignore/slack_announce_channel.txt"
+    announce_channel = None
+    if os.path.exists(announce_path):
+        with open(announce_path) as f:
+            announce_channel = f.read().strip()
+
+    bot = SlackBot(token, botname, announce_channel=announce_channel)
 
     # add logging and our cthulhu handlers
     add_logging()
