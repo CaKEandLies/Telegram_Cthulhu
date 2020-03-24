@@ -12,19 +12,22 @@ and Cthulhu as "C".
 import random
 import emojis
 
-class Error(Exception):
+class GameError(Exception):
     """
     Exceptions that might occur in the game.
     """
     def __init__(self, message):
         pass
 
-class InvalidMoveError(Error):
+class InvalidMoveError(GameError):
     """
     Exceptions that can happen if players attempt impossible tasks.
     """
 
-class PermissionDeniedError(Error):
+class NotInGameError(GameError):
+    pass
+
+class PermissionDeniedError(GameError):
     """
     Exceptions that can happen if players attempt commands not allowed.
     """
@@ -152,13 +155,11 @@ class Player:
             self.nickname = nickname
         self.role = "None"
 
-    def join_game(role):
-        """
-        """
-
     def __init__(self, name, has_flashlight, is_cultist, player_id=0):
         """
         Initializes an instance of the Player class.
+
+        TODO: phase this out.
 
         @param name - The player's name.
         @param has_flashlight - Does the player start with it?
@@ -177,7 +178,7 @@ class Player:
         """
         Returns the players name.
         """
-        return self.name
+        return self.nickname
 
     def get_hand(self):
         """
@@ -196,7 +197,10 @@ class Player:
         Unlike get_hand, this accounts for which cards have already been
         revealed.
         """
-        return self.hand.get_contents()
+        display = ""
+        for card in self.game_data.cards:
+            display += str(card)
+        return display
 
     def display_full_hand(self):
         """
