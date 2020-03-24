@@ -49,6 +49,9 @@ class Card:
         Arguments:
           type - Optional. If a type of card is specified, will load info.
         """
+        self.title = "Null"
+        self.description = "A blank card. Should not be in the game."
+        self.symbol = "null"
         word_len = len(ctype)
         # Scan for extant data.
         with open("card_information/card_data.txt") as f:
@@ -96,18 +99,62 @@ class Card:
         self.is_flipped = False
 
 
+class PlayerGameData:
+    """
+    A class containing relevant data for a player in a game of Cthulhu.
+
+    Attributes:
+      role - the player's role.
+      cards - the cards in the player's hand.
+      claim - what the player claims to have.
+      has_flashlight - whether the player has the flashlight.
+    """
+    def __init__(self, role):
+        """
+        Initialize a player as though they're starting a game.
+        """
+        self.role = role
+        self.cards = []
+        self.claim = None
+        self.has_flashlight = False
+
+
 class Player:
     """
     A player for games of Don't Mess with Cthulhu.
 
     Attributes:
-        name - A player name.
+        p_id - the player's ID.
+        nickname - the player's current nickname.
+        game_status - the status of the player in the game.
+        game_data - if the player is in a game, the data associated with it.
+        stats - a dictionary containing a lot of player stats.
+
+        role - the player's role in the game.
         has_flashlight - Does the player have the flashlight?
         is_cultist - Is the player a cultist?
         hand - The player's current hand.
         player_id - An id corresponding to this player.
         claim - A tuple representing the player's claim.
     """
+
+    def __init__(self, player_id, nickname=None):
+        """
+        Initialize a blank Player with a given player id.
+
+        Arguments:
+          player_id - the ID to label this Player with.
+          nickname - Optional. The player's name.
+        """
+        self.p_id = player_id
+        self.game_status = "Idle"
+        if nickname:
+            self.nickname = nickname
+        self.role = "None"
+
+    def join_game(role):
+        """
+        """
 
     def __init__(self, name, has_flashlight, is_cultist, player_id=0):
         """
@@ -118,6 +165,7 @@ class Player:
         @param is_cultist - Whether the player is a cultist.
         @param player_id - An id corresponding to this player.
         """
+        self.p_id = player_id
         self.name = name
         self.has_flashlight = has_flashlight
         self.is_cultist = is_cultist
@@ -128,12 +176,6 @@ class Player:
     def __str__(self):
         """
         Returns the players name.
-        """
-        return self.name
-
-    def get_name(self):
-        """
-        Returns the players' name.
         """
         return self.name
 
@@ -407,13 +449,14 @@ class Game:
     A game of Don't Mess with Cthulhu.
 
     Attributes:
-        players - A list of players in the game.
+        game_id - the game's ID.
+        players - A list of players in the game or spectating.
         round_counter - Number of rounds that have passed.
         deck - A deck of cards representing the game.
-        signs_remaining - Number of Elder Signs remaining.
-        flashlight - The index of the player who has the flashlight.
-        game_log - A representation of the game.
+        game_settings - The game's settings.
+        game_logs - A representation of the game.
         claims_on - Whether claims are enforced.
+
         whose_claim - Which player currently needs to claim.
         claim_start - The position of the player that started claims.
     """
@@ -480,7 +523,7 @@ class Game:
             self.claim_start = -1
         # Log initial roles.
         for i in range(num):
-            self.game_log += self.players[i].get_name() + ": " + roles[i]
+            self.game_log += str(self.players[i]) + ": " + roles[i]
             self.game_log += "\n"
 
     def get_roles(self):
@@ -507,7 +550,7 @@ class Game:
         """
         result = " "
         for player in self.players:
-            result += player.get_name() + ": "
+            result += str(player) + ": "
             result += player.display_full_hand() + "\n"
         return result
 
@@ -556,7 +599,7 @@ class Game:
         @name - the player's name.
         """
         for i, player in enumerate(self.players):
-            if player.get_name().lower() in name.lower():
+            if str(player).lower() in name.lower():
                 return i
             elif i > 0 and str(i + 1) in name:
                 return i
@@ -572,7 +615,7 @@ class Game:
         for i, player in enumerate(self.players):
             if player_id == player.get_id():
                 return i
-            elif name == player.get_name():
+            elif name == str(player):
                 return i
         return -1
 
@@ -586,7 +629,7 @@ class Game:
         for i in range(len(self.players)):
             self.players[i].set_hand(hands[i])
             # Update the game log.
-            self.game_log += (self.players[i].get_name() + ": ")
+            self.game_log += (str(self.players[i]) + ": ")
             self.game_log += self.players[i].display_full_hand()
             self.game_log += "\n"
         # Set claims to indicate a new round.
@@ -663,7 +706,7 @@ class Game:
         move = input("Who do you want to investigate? \n")
         for i, player in enumerate(self.players):
             # This will have issues in 10 player games - return to pls.
-            if str(i + 1) in move or player.get_name() in move:
+            if str(i + 1) in move or str(player) in move:
                 if player.can_be_investigated():
                     temp = self.flashlight
                     self.flashlight = i
@@ -680,7 +723,7 @@ class Game:
         for i, player in enumerate(self.players):
             display += str(i + 1)
             display += " : "
-            display += player.get_name()
+            display += str(player)
             if self.flashlight == i:
                 display += " (🔦) "
             display += " : "
@@ -700,7 +743,7 @@ class Game:
         Mostly obsolete.
         """
         for i in range(len(self.players)):
-            print(str(i + 1), ":", self.players[i].get_name(),
+            print(str(i + 1), ":", str(self.players[i]),
                   self.players[i].display_hand())
         print("Flashlight is with player", self.flashlight + 1)
 

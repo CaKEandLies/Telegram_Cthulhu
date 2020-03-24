@@ -1,4 +1,4 @@
-from cthulhu_game_new import *
+from cthulhu_game import *
 import unittest
 import emojis
 
@@ -34,6 +34,29 @@ class TestCardClass(unittest.TestCase):
         """
         test_card = Card(ctype="Cthulhu")
         self.assertEqual(test_card.title, "Cthulhu")
+
+    def test_necronomicon_readin(self):
+        """
+        Test Necronomicon cards.
+        """
+        test_card = Card(ctype="Necronomicon")
+        self.assertEqual(test_card.title, "Necronomicon")
+
+    def test_power_card_readins(self):
+        """
+        Test readins of the powercards.
+        """
+        for card in ["Paranoia", "Mirage", "Prescient Vision",
+                     "Evil Prescence", "Private Eye", "Insanity's Grasp"]:
+            test_card = Card(ctype=card)
+            self.assertEqual(test_card.title, card)
+
+    def test_blank_readin(self):
+        """
+        Test a blank card.
+        """
+        test_card = Card(ctype="oooo")
+        self.assertEqual(test_card.title, "Null")
 
 
 class TestPlayerClass(unittest.TestCase):
