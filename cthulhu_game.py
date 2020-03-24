@@ -10,6 +10,90 @@ Throughout the module, an Elder Sign is represented as "E", a blank as "-",
 and Cthulhu as "C".
 """
 import random
+import emojis
+
+class Error(Exception):
+    """
+    Exceptions that might occur in the game.
+    """
+    def __init__(self, message):
+        pass
+
+class InvalidMoveError(Error):
+    """
+    Exceptions that can happen if players attempt impossible tasks.
+    """
+
+class PermissionDeniedError(Error):
+    """
+    Exceptions that can happen if players attempt commands not allowed.
+    """
+    pass
+
+
+class Card:
+    """
+    A card for games of Don't Mess with Cthulhu.
+
+    Attributes:
+      title - the title of the card.
+      description - a description of what the card does.
+      symbol - the symbolic representation of the card.
+      is_flipped - whether the card has been revealed.
+    """
+
+    def __init__(self, ctype=None):
+        """
+        Initializes a card with default information.
+
+        Arguments:
+          type - Optional. If a type of card is specified, will load info.
+        """
+        word_len = len(ctype)
+        # Scan for extant data.
+        with open("card_information/card_data.txt") as f:
+            for line in f:
+                if ctype==line[0:word_len]:
+                    card_data = line.rstrip().split(",")
+                    self.title = card_data[0]
+                    self.description = card_data[1]
+                    self.symbol = card_data[2]
+        self.is_flipped = False
+
+    def __str__(self):
+        """
+        Returns the symbolic representation of the card.
+        """
+        if self.is_flipped:
+            return emojis.encode(":{}:".format(self.symbol))
+        else:
+            return emojis.encode(":black_circle:")
+
+    def help(self):
+        """
+        Returns help on how the card functions.
+
+        TODO
+        """
+        pass
+
+    def is_flipped(self):
+        """
+        Returns whether the card is face-up.
+        """
+        return self.is_flipped
+
+    def flip_up(self):
+        """
+        Flip the card face-up.
+        """
+        self.is_flipped = True
+
+    def flip_down(self):
+        """
+        Flip the card face-down.
+        """
+        self.is_flipped = False
 
 
 class Player:
@@ -28,7 +112,7 @@ class Player:
     def __init__(self, name, has_flashlight, is_cultist, player_id=0):
         """
         Initializes an instance of the Player class.
-        
+
         @param name - The player's name.
         @param has_flashlight - Does the player start with it?
         @param is_cultist - Whether the player is a cultist.
@@ -75,7 +159,7 @@ class Player:
     def display_full_hand(self):
         """
         Returns the entire contents of the hand, nicely-formatted.
-        
+
         Unlike display_hand, this displays the entire contents, and unlike
         get_hand, this is nicely-formatted.
         """
@@ -113,7 +197,7 @@ class Player:
         if not isinstance(hand, Hand):
             raise TypeError("Argument must be of type Hand.")
         self.hand = hand
-   
+
     def set_claim(self, blank, elder, cthulhu):
         """
         Set's this person's current claim.
@@ -227,7 +311,7 @@ class Hand:
             else:
                 hand += "⚫"
         return hand
-    
+
     def get_full_contents(self):
         """
         Returns nicely-formatted contents of the entire hand, sorted.
@@ -333,7 +417,7 @@ class Game:
         whose_claim - Which player currently needs to claim.
         claim_start - The position of the player that started claims.
     """
-    # Role breakdowns for each player count. Note that 1/2 player games 
+    # Role breakdowns for each player count. Note that 1/2 player games
     # do not exist but may be used for testing.
     player_1_roles = ["Investigator"] * 1 + ["Cultist"] * 1
     player_2_roles = ["Investigator"] * 1 + ["Cultist"] * 1
@@ -359,7 +443,7 @@ class Game:
 
         @raises Exception - if incorrect number of players.
         """
-        
+
         num = len(players)
         if num > 10 or num < 1:
             raise Exception("Incorrect number of players!")
@@ -384,9 +468,9 @@ class Game:
         self.moves = []
         self.game_log = "Roles: \n"
         self.round_number = 1
-        
-        # If claims are enforced, set up who's claim it is. Otherwise, 
-        # anyone can claim. 
+
+        # If claims are enforced, set up who's claim it is. Otherwise,
+        # anyone can claim.
         self.claims_on = claims
         if self.claims_on:
             self.whose_claim = self.flashlight
@@ -416,7 +500,7 @@ class Game:
         for player in self.players:
             hands[player.get_id()] = player.get_hand()
         return hands
-    
+
     def get_formatted_hands(self):
         """
         Returns a formatted string of players hands.
@@ -426,7 +510,7 @@ class Game:
             result += player.get_name() + ": "
             result += player.display_full_hand() + "\n"
         return result
-    
+
     def get_log(self):
         """
         Returns a log of the game, which includes hands and roles.
@@ -436,7 +520,7 @@ class Game:
     def can_investigate_position(self, position):
         """
         Returns whether the player at position can be investigated.
-        
+
         @param position - the player's position.
         """
         return self.players[position].can_be_investigated()
@@ -446,7 +530,7 @@ class Game:
         Returns the position of the flashlight.
         """
         return self.flashlight
-    
+
     def get_whose_claim(self):
         """
         Returns whose claim it is.
@@ -468,7 +552,7 @@ class Game:
     def is_valid_name(self, name):
         """
         Returns whether the name is a valid player.
-        
+
         @name - the player's name.
         """
         for i, player in enumerate(self.players):
@@ -519,7 +603,7 @@ class Game:
         self.moves = []
         for player in self.players:
             player.set_claim(0, 0, 0)
-            
+
     def claim(self, pos, blank, elder, cthulhu):
         """
         Sets the claim for a player at position pos. Do nothing if disallowed.
@@ -559,7 +643,7 @@ class Game:
         if "E" in move:
             self.signs_remaining -= 1
         return move
-    
+
     def redeal(self):
         """
         If needed, recollect and deal cards. Returns True if done.
@@ -612,7 +696,7 @@ class Game:
     def print_board(self):
         """
         Prints a simple representation of the board.
-        
+
         Mostly obsolete.
         """
         for i in range(len(self.players)):

@@ -1,0 +1,10 @@
+Blank,A blank investigation. It does nothing.,white_circle
+Elder Sign,Advances towards the win condition for Investigators.,blue_circle
+Cthulhu,Instantly wins game for Cultists, if found.,octopus
+Paranoia,If revealed you control the flashlight for the rest of the round.,-
+Prescient Vision,Reveal a card. Flip it face-down again.,-
+Evil Prescence,Return all of your face-down cards to the reshuffle pile.,-
+Private Eye,Secretly reveal your role to the investigator.,-
+Insanity's Grasp,You cannot communicate while this card is in front of you.,-
+Mirage,Return a previously-discovered Elder Sign to the reshuffle pile.,-
+Necronomicon,Cultists win if no Elder Signs have been found. This is otherwise an Elder Sign,-
