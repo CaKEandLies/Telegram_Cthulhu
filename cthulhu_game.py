@@ -10,6 +10,113 @@ Throughout the module, an Elder Sign is represented as "E", a blank as "-",
 and Cthulhu as "C".
 """
 import random
+import emojis
+
+class Error(Exception):
+    """
+    Exceptions that might occur in the game.
+    """
+    def __init__(self, message):
+        pass
+
+class InvalidMoveError(Error):
+    """
+    Exceptions that can happen if players attempt impossible tasks.
+    """
+
+class PermissionDeniedError(Error):
+    """
+    Exceptions that can happen if players attempt commands not allowed.
+    """
+    pass
+
+
+class Card:
+    """
+    A card for games of Don't Mess with Cthulhu.
+
+    Attributes:
+      title - the title of the card.
+      description - a description of what the card does.
+      symbol - the symbolic representation of the card.
+      is_flipped - whether the card has been revealed.
+    """
+
+    def __init__(self, ctype=None):
+        """
+        Initializes a card with default information.
+
+        Arguments:
+          type - Optional. If a type of card is specified, will load info.
+        """
+        self.title = "Null"
+        self.description = "A blank card. Should not be in the game."
+        self.symbol = "null"
+        word_len = len(ctype)
+        # Scan for extant data.
+        with open("card_information/card_data.txt") as f:
+            for line in f:
+                if ctype==line[0:word_len]:
+                    card_data = line.rstrip().split(",")
+                    self.title = card_data[0]
+                    self.description = card_data[1]
+                    self.symbol = card_data[2]
+        self.is_flipped = False
+
+    def __str__(self):
+        """
+        Returns the symbolic representation of the card.
+        """
+        if self.is_flipped:
+            return emojis.encode(":{}:".format(self.symbol))
+        else:
+            return emojis.encode(":black_circle:")
+
+    def help(self):
+        """
+        Returns help on how the card functions.
+
+        TODO
+        """
+        pass
+
+    def is_flipped(self):
+        """
+        Returns whether the card is face-up.
+        """
+        return self.is_flipped
+
+    def flip_up(self):
+        """
+        Flip the card face-up.
+        """
+        self.is_flipped = True
+
+    def flip_down(self):
+        """
+        Flip the card face-down.
+        """
+        self.is_flipped = False
+
+
+class PlayerGameData:
+    """
+    A class containing relevant data for a player in a game of Cthulhu.
+
+    Attributes:
+      role - the player's role.
+      cards - the cards in the player's hand.
+      claim - what the player claims to have.
+      has_flashlight - whether the player has the flashlight.
+    """
+    def __init__(self, role):
+        """
+        Initialize a player as though they're starting a game.
+        """
+        self.role = role
+        self.cards = []
+        self.claim = None
+        self.has_flashlight = False
 
 # list of supported
 
@@ -38,7 +145,13 @@ class Player:
     A player for games of Don't Mess with Cthulhu.
 
     Attributes:
-        name - A player name.
+        p_id - the player's ID.
+        nickname - the player's current nickname.
+        game_status - the status of the player in the game.
+        game_data - if the player is in a game, the data associated with it.
+        stats - a dictionary containing a lot of player stats.
+
+        role - the player's role in the game.
         has_flashlight - Does the player have the flashlight?
         is_cultist - Is the player a cultist?
         hand - The player's current hand.
@@ -46,7 +159,22 @@ class Player:
         claim - A tuple representing the player's claim.
     """
 
-    def __init__(self, name, has_flashlight, is_cultist, player_id=0, icon_map=None):
+    def __init__(self, player_id, nickname=None, icon_map=None):
+        """
+        Initialize a blank Player with a given player id.
+
+        Arguments:
+          player_id - the ID to label this Player with.
+          nickname - Optional. The player's name.
+        """
+        self.p_id = player_id
+        self.game_status = "Idle"
+        if nickname:
+            self.nickname = nickname
+        self.role = "None"
+
+    def __init__(self, nickname=None, has_flashlight, is_cultist, player_id=0, icon_map=None):
+
         """
         Initializes an instance of the Player class.
 
@@ -55,6 +183,7 @@ class Player:
         @param is_cultist - Whether the player is a cultist.
         @param player_id - An id corresponding to this player.
         """
+        self.p_id = player_id
         self.name = name
         self.has_flashlight = has_flashlight
         self.is_cultist = is_cultist
@@ -66,12 +195,6 @@ class Player:
     def __str__(self):
         """
         Returns the players name.
-        """
-        return self.name
-
-    def get_name(self):
-        """
-        Returns the players' name.
         """
         return self.name
 
@@ -348,13 +471,14 @@ class Game:
     A game of Don't Mess with Cthulhu.
 
     Attributes:
-        players - A list of players in the game.
+        game_id - the game's ID.
+        players - A list of players in the game or spectating.
         round_counter - Number of rounds that have passed.
         deck - A deck of cards representing the game.
-        signs_remaining - Number of Elder Signs remaining.
-        flashlight - The index of the player who has the flashlight.
-        game_log - A representation of the game.
+        game_settings - The game's settings.
+        game_logs - A representation of the game.
         claims_on - Whether claims are enforced.
+
         whose_claim - Which player currently needs to claim.
         claim_start - The position of the player that started claims.
     """
@@ -398,6 +522,7 @@ class Game:
             }
         self.icon_map = icon_map
 
+
         num = len(players)
         if num > 10 or num < 1:
             raise Exception("Incorrect number of players!")
@@ -435,7 +560,7 @@ class Game:
             self.claim_start = -1
         # Log initial roles.
         for i in range(num):
-            self.game_log += self.players[i].get_name() + ": " + roles[i]
+            self.game_log += str(self.players[i]) + ": " + roles[i]
             self.game_log += "\n"
 
     def get_roles(self):
@@ -462,7 +587,7 @@ class Game:
         """
         result = " "
         for player in self.players:
-            result += player.get_name() + ": "
+            result += str(player) + ": "
             result += player.display_full_hand() + "\n"
         return result
 
@@ -511,7 +636,7 @@ class Game:
         @name - the player's name.
         """
         for i, player in enumerate(self.players):
-            if player.get_name().lower() in name.lower():
+            if str(player).lower() in name.lower():
                 return i
             elif i > 0 and str(i + 1) in name:
                 return i
@@ -527,7 +652,7 @@ class Game:
         for i, player in enumerate(self.players):
             if player_id == player.get_id():
                 return i
-            elif name == player.get_name():
+            elif name == str(player):
                 return i
         return -1
 
@@ -541,7 +666,7 @@ class Game:
         for i in range(len(self.players)):
             self.players[i].set_hand(hands[i])
             # Update the game log.
-            self.game_log += (self.players[i].get_name() + ": ")
+            self.game_log += (str(self.players[i]) + ": ")
             self.game_log += self.players[i].display_full_hand()
             self.game_log += "\n"
         # Set claims to indicate a new round.
@@ -618,7 +743,7 @@ class Game:
         move = input("Who do you want to investigate? \n")
         for i, player in enumerate(self.players):
             # This will have issues in 10 player games - return to pls.
-            if str(i + 1) in move or player.get_name() in move:
+            if str(i + 1) in move or str(player) in move:
                 if player.can_be_investigated():
                     temp = self.flashlight
                     self.flashlight = i
@@ -635,7 +760,7 @@ class Game:
         for i, player in enumerate(self.players):
             display += str(i + 1)
             display += " : "
-            display += player.get_name()
+            display += str(player)
             if self.flashlight == i:
                 display += " ({}) ".format(self.icon_map.get(Icon.FLASHLIGHT))
             display += " : "
@@ -655,7 +780,7 @@ class Game:
         Mostly obsolete.
         """
         for i in range(len(self.players)):
-            print(str(i + 1), ":", self.players[i].get_name(),
+            print(str(i + 1), ":", str(self.players[i]),
                   self.players[i].display_hand())
         print("Flashlight is with player", self.flashlight + 1)
 
