@@ -63,7 +63,19 @@ class TestPlayerClass(unittest.TestCase):
     """
     A unit test for our Player class.
     """
-    pass
+
+    def test_hand_summary(self):
+        """
+        Test the function that summarizes contents of a hand.
+        """
+        test_player = Player(1, nickname="Test")
+        test_player.game_data = PlayerGameData("Cultist")
+        test_player.game_data.cards = [Card(ctype="Elder Sign"),
+                                       Card(ctype="Elder Sign"),
+                                       Card(ctype="Mirage"),
+                                       Card(ctype="Cthulhu")]
+        print(test_player.hand_summary())
+
 
 if __name__ == "__main__":
     unittest.main()

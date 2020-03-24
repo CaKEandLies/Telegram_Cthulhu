@@ -32,7 +32,7 @@ def read_message(filepath):
 def is_game_ongoing(chat_data):
     """
     Determines whether a game is ongoing given chat data.
-    
+
     @param chat_data - the chat_data for a given chat.
     """
     if "game_is_ongoing" in chat_data:
@@ -44,7 +44,7 @@ def is_game_ongoing(chat_data):
 def is_game_pending(chat_data):
     """
     Determines whether a game is pending given chat data.
-    
+
     @param chat_data - the chat_data for a given chat.
     """
     if "game_is_pending" in chat_data:
@@ -56,7 +56,7 @@ def is_game_pending(chat_data):
 def reset_chat_data(chat_data):
     """
     Resets chat data to be that of a chat with no pending game.
-    
+
     @param chat_data - the chat_data for a given chat.
     """
     chat_data["pending_players"] = {}
@@ -148,7 +148,7 @@ def feedback(bot, update, args=None):
                          text=read_message("messages/feedback_failure.txt"))
 
 
-### Game-organizational functions. 
+### Game-organizational functions.
 def new_game(bot, update, chat_data=None, args=None):
     """
     Starts a new game of Don't Mess with Cthulhu in the given chat.
@@ -306,7 +306,7 @@ def start_game(bot, update, chat_data=None):
     """
     Starts the pending game.
     """
-    # Check that a game with enough players is pending. 
+    # Check that a game with enough players is pending.
     if not is_game_pending(chat_data):
         bot.send_message(chat_id=update.message.chat_id,
                          text=read_message('messages/start_game_dne.txt'))
@@ -334,7 +334,7 @@ def start_game(bot, update, chat_data=None):
                          text=read_message('messages/start_game.txt'))
         bot.send_message(chat_id=update.message.chat_id,
                          text=chat_data["game"].display_board())
-        
+
 
 def end_game(bot, update, chat_data=None):
     """
@@ -523,8 +523,7 @@ def send_hands(bot, game, chat_data):
     # Generate and send to players.
     hands = game.get_hands()
     for user_id, hand in hands.items():
-        bot.send_message(chat_id=user_id, text=("You have %s blanks, %s signs"
-                                                " and %s Cthulhus." % hand))
+        bot.send_message(chat_id=user_id, text=hand)
     # Send info to spectators.
     for spectator_id in chat_data["spectators"]:
         bot.send_message(chat_id=spectator_id, text=game.get_formatted_hands())
@@ -588,8 +587,8 @@ def investigate(bot, update, chat_data=None, args=None):
                          text="You found Cthulhu!")
     elif "-" in result:
         bot.send_message(chat_id=update.message.chat_id, text="Nothing...")
-    
-    bot.send_message(chat_id=update.message.chat_id, 
+
+    bot.send_message(chat_id=update.message.chat_id,
                      text=chat_data["game"].display_board())
     # Check victory conditions.
     if chat_data["game"].investigators_have_won():
@@ -600,7 +599,7 @@ def investigate(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id, text="Cultists win!")
         end_game(bot, update, chat_data=chat_data)
         return True
-    
+
     if chat_data["game"].redeal():
         bot.send_message(chat_id=update.message.chat_id, text="Round is over!")
         send_hands(bot, chat_data["game"], chat_data)
@@ -608,7 +607,7 @@ def investigate(bot, update, chat_data=None, args=None):
                          text=chat_data["game"].display_board())
 
 
-### Hidden commands and other miscellany. 
+### Hidden commands and other miscellany.
 def wee(bot, update):
     """
     Replies with a hoo command.
@@ -672,7 +671,7 @@ dispatcher.add_handler(feedback_handler)
 # Handlers related to organizing a game.
 newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True,
                                  pass_args=True)
-joingame_handler = CommandHandler(joingame_synonyms, join_game, 
+joingame_handler = CommandHandler(joingame_synonyms, join_game,
                                   pass_chat_data=True, pass_args=True)
 unjoin_handler = CommandHandler(unjoin_synonyms, unjoin, pass_chat_data=True)
 spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)

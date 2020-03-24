@@ -155,8 +155,9 @@ class Player:
             self.nickname = nickname
         self.role = "None"
 
+    """
     def __init__(self, name, has_flashlight, is_cultist, player_id=0):
-        """
+
         Initializes an instance of the Player class.
 
         TODO: phase this out.
@@ -165,7 +166,7 @@ class Player:
         @param has_flashlight - Does the player start with it?
         @param is_cultist - Whether the player is a cultist.
         @param player_id - An id corresponding to this player.
-        """
+
         self.p_id = player_id
         self.name = name
         self.has_flashlight = has_flashlight
@@ -173,6 +174,7 @@ class Player:
         self.hand = Hand([])
         self.id = player_id
         self.claim = (0, 0, 0)
+    """
 
     def __str__(self):
         """
@@ -184,11 +186,38 @@ class Player:
         """
         Returns the contents of the players' hands as a tuple of (-, E, C).
 
+        TODO: render this defunct.
+
         Unlike display_hand, this returns an omniscient summary of what's in
         the player's hand.
         """
         return (self.hand.get_blank(), self.hand.get_elder(),
                 self.hand.get_cthulhu())
+
+    def hand_summary(self):
+        """
+        Displays a summary of what's in a player's hand.
+
+        Returns:
+          contents - a string summarizing hand contents.
+
+        Raises:
+          GameError - if no game data exists for the player.
+        """
+        hand = {}
+        contents = ""
+        # Ensure this player has a hand.
+        if not self.game_data:
+            raise GameError("It appears this player isn't in a game.")
+        # Count cards in the hand and format them.
+        for card in self.game_data.cards:
+            if card.title in hand:
+                hand[card.title] += 1
+            else:
+                hand[card.title] = 1
+        for card_type in hand:
+            contents += "{} {}(s),".format(hand[card_type], card_type)
+        return contents
 
     def display_hand(self):
         """
@@ -545,7 +574,7 @@ class Game:
         """
         hands = {}
         for player in self.players:
-            hands[player.get_id()] = player.get_hand()
+            hands[player.get_id()] = player.hand_summary()
         return hands
 
     def get_formatted_hands(self):
