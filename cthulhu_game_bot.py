@@ -121,6 +121,15 @@ def spectate(update, context):
     reply_all(update, context, "spectate")
 
 
+@catch_game_errors
+def start_game(update, context):
+    """
+    Start the pending game.
+    """
+    context.chat_data["game"].start_game()
+    reply_all(update, context, "start_game")
+
+
 ### Helper functions for game-organizational functions.
 def initialize_chat_data(update, context):
     """
@@ -158,40 +167,6 @@ def pending_players(bot, update, chat_data=None):
     for user_id, name in chat_data["pending_players"].items():
         message = message + name + "\n"
     bot.send_message(chat_id=update.message.chat_id, text=message)
-
-
-def start_game(bot, update, chat_data=None):
-    """
-    Starts the pending game.
-    """
-    # Check that a game with enough players is pending.
-    if not is_game_pending(chat_data):
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/start_game_dne.txt'))
-        return
-    if len(chat_data["pending_players"]) < chat_data["min_players"]:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/start_game_too_few.txt'))
-        return
-    # Try to message all users.
-    try:
-        for user_id, nickname in chat_data["pending_players"].items():
-            bot.send_message(chat_id=user_id, text="Trying to start game!")
-    except Unauthorized as unauth:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/start_game_failure.txt'))
-        return
-    # Start the game!
-    else:
-        chat_data["game_is_ongoing"] = True
-        chat_data["game_is_pending"] = False
-        chat_data["game"] = cg.Game(chat_data["pending_players"],
-                                    claims=chat_data["claim_settings"])
-        begin_game(bot, chat_data["game"], chat_data)
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/start_game.txt'))
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=chat_data["game"].display_board())
 
 
 def end_game(bot, update, chat_data=None):
@@ -590,22 +565,22 @@ newgame_handler = CommandHandler('newgame', new_game)
 joingame_handler = CommandHandler(joingame_synonyms, join_game)
 unjoin_handler = CommandHandler(unjoin_synonyms, unjoin_game)
 spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
+startgame_handler = CommandHandler('startgame', start_game)
 dispatcher.add_handler(newgame_handler)
 dispatcher.add_handler(joingame_handler)
 dispatcher.add_handler(unjoin_handler)
 dispatcher.add_handler(spectate_handler)
+dispatcher.add_handler(startgame_handler)
 
 pending_handler = CommandHandler('listplayers', pending_players,
                                  pass_chat_data=True)
-startgame_handler = CommandHandler('startgame', start_game)
+
 endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
-
-
 #dispatcher.add_handler(pending_handler)
-#dispatcher.add_handler(startgame_handler)
 #dispatcher.add_handler(endgame_handler)
 
 # Handlers for in-game commands.
+
 investigate_handler = CommandHandler(investigate_synonyms, investigate,
                                      pass_chat_data=True, pass_args=True)
 claim_handler = CommandHandler(claim_synonyms, claim, pass_chat_data=True,

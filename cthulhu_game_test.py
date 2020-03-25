@@ -83,10 +83,14 @@ class TestPlayerClass(unittest.TestCase):
         test_player.game_data = PlayerGameData("Cultist")
         # Test hand information before and after giving a hand.
         self.assertFalse(test_player.hand_summary())
-        test_player.game_data.cards = [Card(ctype="Elder Sign"),
-                                       Card(ctype="Elder Sign"),
-                                       Card(ctype="Mirage"),
-                                       Card(ctype="Cthulhu")]
+        test_player.set_hand([Card(ctype="Elder Sign"),
+                              Card(ctype="Elder Sign"),
+                              Card(ctype="Mirage"),
+                              Card(ctype="Cthulhu")])
+        test_player.set_claim([Card(ctype="Elder Sign"),
+                               Card(ctype="Elder Sign"),
+                               Card(ctype="Blank"),
+                               Card(ctype="Cthulhu")])
         self.assertTrue(test_player.hand_summary())
 
 
@@ -95,7 +99,17 @@ class TestGameClass(unittest.TestCase):
     Tests the game class.
     """
     def test_game_creation(self):
-        pass
+        """
+        Test creation of a basic game.
+        """
+        game = Game()
+        # Add players.
+        for i in range(random.randint(3, 10)):
+            game.add_player(Player(random.randint(1, 1000)))
+        # Add spectators.
+        for i in range(random.randint(10, 20)):
+            game.add_player(Player(random.randint(1, 1000)), is_playing=False)
+        game.start_game()
 
 
 if __name__ == "__main__":

@@ -155,6 +155,14 @@ class Player:
         self.game_data = None
         self.stats = PlayerStats()
 
+    def start_playing(self, role):
+        # # TODO:
+        self.game_data = PlayerGameData(role)
+
+    def start_spectating(self):
+        # Todo
+        self.status = "Spectating"
+
     def __str__(self):
         """
         Returns the players name.
@@ -166,6 +174,12 @@ class Player:
         Sets the contents of this player's hand.
         """
         self.game_data.cards = hand
+
+    def give_card(self, card):
+        """
+        Give the player a new card.
+        """
+        self.game_data.cards.append(card)
 
     def set_claim(self, claim):
         """
@@ -206,7 +220,7 @@ class Player:
           omniscient - If True, shows entire contents of hand.
         """
         display = ""
-        for card in player.game_data.cards:
+        for card in self.game_data.cards:
             if omniscient:
                 display += card.symbol
             else:
@@ -218,7 +232,7 @@ class Player:
         Displays the player's claim in symbolic form.
         """
         display = ""
-        for card in player.game_data.cards:
+        for card in self.game_data.cards:
             display += card.symbol
         return display
 
@@ -341,6 +355,12 @@ class Game:
         """
         return sum([p.status=="Playing" for p in self.players])
 
+    def get_active_players(self):
+        """
+        A helper function that returns the non-spectating players.
+        """
+        return [p for p in self.players if p.status=="Playing"]
+
     def start_game(self):
         """
         Starts the pending game.
@@ -348,8 +368,17 @@ class Game:
         if self.game_status != "Unstarted":
             raise GameError("This game has already been started.")
         else:
+            # Assign roles.
+            roles = self.make_roles()
+            for i, p in enumerate(self.get_active_players()):
+                p.start_playing(roles[i])
+            # Deal cards.
+            self.create_deck()
+            self.deal_cards()
+            # Give someone the flashlight.
+            random.choice(self.get_active_players()).toggle_flashlight()
+            # Note that the game is ongoing.
             self.game_status = "Ongoing"
-            # TODO: things that actually would start this game.
 
     def create_deck(self):
         """
@@ -368,28 +397,40 @@ class Game:
         for i in range(n_players):
             self.deck.append(Card(ctype="Elder Sign"))
         # Add blanks.
-        for i in range((n_players * 5) - len(deck)):
+        for i in range((n_players * 5) - len(self.deck)):
             self.deck.append(Card(ctype="Blank"))
 
-    def assign_roles(self):
+    def make_roles(self):
         """
         Assign roles to players.
         """
         # Determine the number of investigators and cultists.
         n_players = self.count_active_players()
+        print(n_players)
+        got_info = False
         with open("roles/role_info.txt") as f:
             for line in f:
-                if str(n_players)==line[0]:
+                if str(n_players)==line.rstrip().split(",")[0]:
                     role_data = line.rstrip().split(",")
-                    n_investigators = role_data[1]
-                    n_cultists = role_data[2]
-        if not n_investigators:
+                    n_investigators = int(role_data[1])
+                    n_cultists = int(role_data[2])
+                    got_info = True
+        if not got_info:
             raise GameError("Failed to find a role setup.")
         # Make a deck of roles and distribute them.
         roles = ["Investigator"] * n_investigators + ["Cultist"] * n_cultists
         random.shuffle(roles)
-        for i, p in enumerate([p for p in self.players if p.status == "Playing"]):
-            p.game_data.role = roles[i]
+        return roles
+
+    def deal_cards(self):
+        """
+        Deal cards equally between all active players.
+        """
+        random.shuffle(self.deck)
+        while len(self.deck) > 0:
+            for p in self.get_active_players():
+                p.give_card(self.deck.pop())
+
 
     ############################
 
@@ -485,24 +526,6 @@ class Game:
             elif name == str(player):
                 return i
         return -1
-
-    def deal_cards(self):
-        """
-        Deals out cards to players and updates game log.
-        """
-        # Deal out hands.
-        hands = self.deck.deal()
-        self.game_log += ('\n')
-        for i in range(len(self.players)):
-            self.players[i].set_hand(hands[i])
-            # Update the game log.
-            self.game_log += (str(self.players[i]) + ": ")
-            self.game_log += self.players[i].display_hand(omniscient=True)
-            self.game_log += "\n"
-        # Set claims to indicate a new round.
-        if self.claims_on:
-            self.whose_claim = self.flashlight
-            self.claim_start = self.flashlight
 
     def recollect_cards(self):
         """

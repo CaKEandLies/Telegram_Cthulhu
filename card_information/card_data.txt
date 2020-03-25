@@ -1,6 +1,6 @@
 Blank,A blank investigation. It does nothing.,white_circle
-Elder Sign,Advances towards the win condition for Investigators.,blue_circle
-Cthulhu,Instantly wins game for Cultists, if found.,octopus
+Elder Sign,Advances towards the win condition for Investigators.,large_blue_circle
+Cthulhu,Instantly wins game for Cultists if found.,octopus
 Paranoia,If revealed you control the flashlight for the rest of the round.,-
 Prescient Vision,Reveal a card. Flip it face-down again.,-
 Evil Prescence,Return all of your face-down cards to the reshuffle pile.,-
