@@ -17,7 +17,7 @@ class GameError(Exception):
     Exceptions that might occur in the game.
     """
     def __init__(self, message):
-        pass
+        self.message = message
 
 
 class Card:
@@ -283,7 +283,6 @@ class Game:
     A game of Don't Mess with Cthulhu.
 
     Attributes:
-        game_id - the game's ID.
         players - A list of players in the game or spectating.
         game_status - The status of this game.
         round_counter - Number of rounds that have passed.
@@ -312,14 +311,13 @@ class Game:
              7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
              10: player_10_roles}
 
-    def __init__(self, game_id, game_settings=None):
+    def __init__(self, game_settings=None):
         """
         Start a new, empty game of Don't Mess with Cthulhu.
 
         Arguments:
           game_id - the game's ID.
         """
-        self.game_id = game_id
         self.players = []
         self.game_status = "Unstarted"
 
@@ -331,17 +329,28 @@ class Game:
           player - a Player class.
           is_playing - whether the player is playing (True) or spectating.
         """
+        # Check that the game accepts new players.
+        if self.game_status != "Unstarted" and is_playing:
+            raise GameError("The game has already started.")
+        # Check that the player hasn't already joined.
         if player in self.players:
-            raise GameError("Player is already participating!")
+            raise GameError("You're already in this game.")
+            
+        # Add the player as a participant or spectator.
+        if is_playing:
+            player.game_status = "Playing"
         else:
-            player.game_status = ""
+            player.game_status = "Spectating"
+        self.players.append(player)
 
     def remove_player(self, player):
         """
         Remove a player, if they were playing.
         """
         if player in self.players:
-            remove(player)
+            self.players.remove(player)
+        else:
+            raise GameError("You weren't in the game.")
 
     def start_game(self):
         if self.game_status != "Unstarted":
@@ -349,56 +358,6 @@ class Game:
         else:
             self.game_status = "Ongoing"
             # TODO: things that actually would start this game.
-
-
-    def __init__(self, game_id):
-        """
-        Initializes a game of Don't Mess With Cthulhu given player names.
-
-        @param players - A dictionary of player ids: nicknames
-        @param claims - Whether claims are strictly enforced
-
-        @raises Exception - if incorrect number of players.
-        """
-
-        num = len(players)
-        if num > 10 or num < 1:
-            raise Exception("Incorrect number of players!")
-        # Assign roles to players.
-        roles = self.ROLES[num]
-        random.shuffle(roles)
-        starting = random.randint(0, num-1)
-        # Set up the game's list of players.
-        self.players = []
-        position = 0
-        for user_id, name in players.items():
-            # Initialize a player for each in the list.
-            self.players.append(Player(name, position == starting,
-                                       "Cultist" in roles[position],
-                                       player_id=user_id))
-            position += 1
-        # Set up a blank gamestate with the flashlight starting at a random
-        # player.
-        self.flashlight = starting
-        self.deck = Deck(num)
-        self.signs_remaining = num
-        self.moves = []
-        self.game_log = "Roles: \n"
-        self.round_number = 1
-
-        # If claims are enforced, set up who's claim it is. Otherwise,
-        # anyone can claim.
-        self.claims_on = claims
-        if self.claims_on:
-            self.whose_claim = self.flashlight
-            self.claim_start = self.flashlight
-        else:
-            self.whose_claim = -1
-            self.claim_start = -1
-        # Log initial roles.
-        for i in range(num):
-            self.game_log += str(self.players[i]) + ": " + roles[i]
-            self.game_log += "\n"
 
     def get_roles(self):
         """

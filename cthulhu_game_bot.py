@@ -20,7 +20,7 @@ from telegram.error import Unauthorized
 import random
 
 
-### Generally useful functions.
+### Helper functions.
 def read_message(filepath):
     """
     Returns contents of a text file.
@@ -31,75 +31,13 @@ def read_message(filepath):
     return message
 
 
-def is_game_ongoing(chat_data):
+def reply_all(update, context, name):
     """
-    Determines whether a game is ongoing given chat data.
-
-    @param chat_data - the chat_data for a given chat.
+    Send a message from a filepath to the chat.
     """
-    if "game_is_ongoing" in chat_data:
-        if chat_data["game_is_ongoing"]:
-            return True
-    return False
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text=read_message("messages/{}.txt".format(name)))
 
-
-def is_game_pending(chat_data):
-    """
-    Determines whether a game is pending given chat data.
-
-    @param chat_data - the chat_data for a given chat.
-    """
-    if "game_is_pending" in chat_data:
-        if chat_data["game_is_pending"]:
-            return True
-    return False
-
-
-def reset_chat_data(chat_data):
-    """
-    Resets chat data to be that of a chat with no pending game.
-
-    @param chat_data - the chat_data for a given chat.
-    """
-    chat_data["pending_players"] = {}
-    chat_data["spectators"] = []
-    chat_data["game_is_pending"] = False
-    chat_data["game_is_ongoing"] = False
-    chat_data["min_players"] = 3
-    chat_data["max_players"] = 10
-    if "claim_settings" not in chat_data:
-        chat_data["claim_settings"] = True
-
-
-def is_nickname_valid(name, user_id, chat_data):
-    """
-    Determines whether a nickname is already used or otherwise invalid.
-
-    @param user_id - the id of the user.
-    @param chat_data - the relevant chat data.
-    """
-    assert "pending_players" in chat_data
-    # Check name length.
-    if len(name) < 3 or len(name) > 15:
-        return False
-    # It's okay if the user is already registered under that name.
-    if user_id in chat_data["pending_players"]:
-        if chat_data["pending_players"][user_id].lower() in name.lower():
-            return True
-        if name.lower() in chat_data["pending_players"][user_id].lower():
-            return True
-    # Look for a case-insensitive version of the name in remaining players.
-    for user_id, user_name in chat_data["pending_players"].items():
-        if name.lower() in user_name.lower():
-            return False
-        elif user_name.lower() in name.lower():
-            return False
-    # Check that the name isn't an integer.
-    try:
-        int(name)
-        return False
-    except ValueError as e:
-        return True
 
 
 ### Non-game related commands.
@@ -108,107 +46,80 @@ def start(update, context):
     Prints out the start/help/rules as requested.
     """
     command = update.message.text.split("@")[0][1:]
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=read_message("messages/{}.txt".format(command)))
+    reply_all(update, context, command)
 
 
-def feedback(bot, update, args=None):
+def feedback(update, context):
     """
     Records feedback.
     """
-    if len(args) > 0:
+    if len(context.args) > 0:
         feedback = open("ignore/feedback.txt", "a")
-        feedback.write("\n")
-        feedback.write(update.message.from_user.first_name)
-        feedback.write("\n")
-        # Records User ID so that if feature is implemented, can message them
-        # about it.
-        feedback.write(str(update.message.from_user.id))
-        feedback.write("\n")
-        feedback.write(" ".join(args))
-        feedback.write("\n")
+        feedback.write("\n" + " ".join(context.args) + "\n")
         feedback.close()
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message("messages/feedback_success.txt"))
+        reply_all(update, context, "feedback_success")
     else:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message("messages/feedback_failure.txt"))
+        reply_all(update, context, "feedback_failure")
+
 
 
 ### Game-organizational functions.
-def new_game(bot, update, chat_data=None, args=None):
+def new_game(update, context):
     """
     Starts a new game of Don't Mess with Cthulhu in the given chat.
     """
-    # If no game exists, start one.
-    if not is_game_ongoing(chat_data) and not is_game_pending(chat_data):
-        reset_chat_data(chat_data)
-        # Set minimum and maximum players
-        if len(args) == 2:
-            try:
-                min_players = int(args[0])
-                max_players = int(args[1])
-                assert min_players <= max_players
-                assert min_players >= 3
-                assert max_players <= 10
-                chat_data["min_players"] = min_players
-                chat_data["max_players"] = max_players
-            except (ValueError, AssertionError) as e:
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text=read_message("messages/new_usage.txt"))
-                return
-        elif len(args) != 0:
-            bot.send_message(chat_id=update.message.chat_id,
-                                 text=read_message("messages/new_usage.txt"))
-            return
-        chat_data["game_is_pending"] = True
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/new_game.txt'))
-    # If a game exists, let players know.
-    elif is_game_ongoing(chat_data):
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/new_game_ongoing.txt'))
-    elif is_game_pending(chat_data):
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/new_game_pending.txt'))
-    # This isn't supposed to happen.
-    else:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message("messages/error.txt"))
+    # Check if a game is already ongoing or pending.
+    if "game" in context.chat_data:
+        if context.chat_data["game"].game_status == "Unstarted":
+            reply_all(update, context, "new_game_pending")
+        else:
+            reply_all(update, context, "new_game_ongoing")
+    # Initialize a game, if there isn't one already.
+    initialize_chat_data(update, context)
 
 
-def join_game(bot, update, chat_data=None, args=None):
+def join_game(update, context):
     """
     Allows players to join a game of Don't Mess with Cthulhu in the chat.
+
+    TODO: nickname checking.
     """
-    # Check that a game and space within it exists.
-    if not is_game_pending(chat_data):
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/join_game_not_pending.txt'))
-        return
-    # Ensure the user isn't already spectating.
-    user_id = update.message.from_user.id
-    if user_id in chat_data["spectators"]:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/join_game_spectator.txt'))
-        return
-    # Check that the nickname is valid and add the player.
-    if args:
-        nickname = " ".join(args)
-    else:
-        nickname = update.message.from_user.first_name
-    if is_nickname_valid(nickname, user_id, chat_data):
-        chat_data["pending_players"][user_id] = nickname
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="Joined under nickname %s!" % nickname)
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="Current player count: "
-                         "%s" % len(chat_data["pending_players"]))
-        if len(chat_data["pending_players"]) == chat_data["max_players"]:
-            start_game(bot, update, chat_data)
-    else:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message("messages/nickname_invalid.txt"))
+    initialize_chat_data(update, context)
+    initialize_player(update, context)
+    try:
+        context.chat_data["game"].add_player(context.user_data["player"])
+    except cg.GameError as err:
+        reply_all(update, context, "test")
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text=err.message)
+    print(context.chat_data["game"].players)
+
+
+### Helper functions for game-organizational functions.
+def initialize_chat_data(update, context):
+    """
+    Resets chat data to be that of a chat with no pending game.
+    TODO: this docstring
+    @param chat_data - the chat_data for a given chat.
+    """
+    if "game" not in context.chat_data:
+        context.chat_data["game"] = cg.Game()
+        reply_all(update, context, "new_game")
+    if "game_settings" not in context.chat_data:
+        context.chat_data["game_settings"] = cg.GameSettings()
+
+
+def initialize_player(update, context):
+    """
+    If a user doesn't have a player profile associated, make one.
+    """
+    if "player" not in context.user_data:
+        context.user_data["player"] = cg.Player(update.message.from_user.id)
+        reply_all(update, context, "new_player")
+
+##########################################################
+
+
 
 
 def unjoin(bot, update, chat_data=None):
@@ -333,6 +244,65 @@ def end_game(bot, update, chat_data=None):
     reset_chat_data(chat_data)
     bot.send_message(chat_id=update.message.chat_id,
                      text="Any game has been ended. /newgame?")
+
+
+### Required to set up games.
+def is_game_ongoing(chat_data):
+    """
+    Determines whether a game is ongoing given chat data.
+
+    @param chat_data - the chat_data for a given chat.
+    """
+    if "game_is_ongoing" in chat_data:
+        if chat_data["game_is_ongoing"]:
+            return True
+    return False
+
+
+def is_game_pending(chat_data):
+    """
+    Determines whether a game is pending given chat data.
+
+    @param chat_data - the chat_data for a given chat.
+    """
+    if "game_is_pending" in chat_data:
+        if chat_data["game_is_pending"]:
+            return True
+    return False
+
+
+
+
+
+def is_nickname_valid(name, user_id, chat_data):
+    """
+    Determines whether a nickname is already used or otherwise invalid.
+
+    @param user_id - the id of the user.
+    @param chat_data - the relevant chat data.
+    """
+    assert "pending_players" in chat_data
+    # Check name length.
+    if len(name) < 3 or len(name) > 15:
+        return False
+    # It's okay if the user is already registered under that name.
+    if user_id in chat_data["pending_players"]:
+        if chat_data["pending_players"][user_id].lower() in name.lower():
+            return True
+        if name.lower() in chat_data["pending_players"][user_id].lower():
+            return True
+    # Look for a case-insensitive version of the name in remaining players.
+    for user_id, user_name in chat_data["pending_players"].items():
+        if name.lower() in user_name.lower():
+            return False
+        elif user_name.lower() in name.lower():
+            return False
+    # Check that the name isn't an integer.
+    try:
+        int(name)
+        return False
+    except ValueError as e:
+        return True
 
 
 ### Functions that modify game settings.
@@ -615,6 +585,7 @@ def hi(bot, update):
     """
     bot.send_message(chat_id=update.message.chat_id, text="/hi")
 
+
 def send_dm(bot, update):
     """
     Sends a test message directly to the user.
@@ -632,6 +603,8 @@ bot = telegram.Bot(token=token)
 # Create an updater to fetch updates.
 updater = Updater(token=token, use_context=True)
 dispatcher = updater.dispatcher
+
+# Log errors for future reference.
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
                     '%(message)s', level=logging.INFO,
                     filename='ignore/logging.txt', filemode='a')
@@ -648,15 +621,13 @@ blame_synonyms = ["blaim", "blame", "blam"]
 
 # Logistical command handlers.
 start_handler = CommandHandler(start_synonyms, start)
-feedback_handler = CommandHandler('feedback', feedback, pass_args=True)
+feedback_handler = CommandHandler('feedback', feedback)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(feedback_handler)
 
 # Handlers related to organizing a game.
-newgame_handler = CommandHandler('newgame', new_game, pass_chat_data=True,
-                                 pass_args=True)
-joingame_handler = CommandHandler(joingame_synonyms, join_game,
-                                  pass_chat_data=True, pass_args=True)
+newgame_handler = CommandHandler('newgame', new_game)
+joingame_handler = CommandHandler(joingame_synonyms, join_game)
 unjoin_handler = CommandHandler(unjoin_synonyms, unjoin, pass_chat_data=True)
 spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
 unspectate_handler = CommandHandler('unspectate', unspectate, pass_chat_data=True)
@@ -701,3 +672,4 @@ dispatcher.add_handler(hi_handler)
 dispatcher.add_handler(dm_handler)
 
 updater.start_polling()
+updater.idle()
