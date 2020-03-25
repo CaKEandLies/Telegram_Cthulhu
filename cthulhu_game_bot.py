@@ -23,9 +23,11 @@ import random
 ### Generally useful functions.
 def read_message(filepath):
     """
-    Opens and returns a text file as a string.
+    Returns contents of a text file.
     """
-    message = open(filepath, 'r').read()
+    file = open(filepath, 'r')
+    message = file.read()
+    file.close()
     return message
 
 
@@ -101,28 +103,13 @@ def is_nickname_valid(name, user_id, chat_data):
 
 
 ### Non-game related commands.
-def start(bot, update):
+def start(update, context):
     """
-    Prints out a message detailing the functionality of this bot.
+    Prints out the start/help/rules as requested.
     """
+    command = update.message.text.split("@")[0][1:]
     bot.send_message(chat_id=update.message.chat_id,
-                     text=read_message('messages/start.txt'))
-
-
-def help_message(bot, update):
-    """
-    Sends the user a message giving help.
-    """
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=read_message('messages/help.txt'))
-
-
-def rules(bot, update):
-    """
-    Sends a message detailing the rules of the game.
-    """
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=read_message('messages/rules.txt'))
+                     text=read_message("messages/{}.txt".format(command)))
 
 
 def feedback(bot, update, args=None):
@@ -643,7 +630,7 @@ token = open('ignore/token.txt', 'r').read()
 bot = telegram.Bot(token=token)
 
 # Create an updater to fetch updates.
-updater = Updater(token=token)
+updater = Updater(token=token, use_context=True)
 dispatcher = updater.dispatcher
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
                     '%(message)s', level=logging.INFO,
@@ -651,6 +638,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
 
 
 # Command synonyms, where they apply.
+start_synonyms = ["start", "help", "rules"]
 joingame_synonyms = ["joingame", "join", "addme", "hibitch"]
 unjoin_synonyms = ["unjoin", "byebitch"]
 investigate_synonyms = ["investigate", "invest", "inv", "dig", "dog", "canine",
@@ -659,13 +647,9 @@ claim_synonyms = ["claim", "c"]
 blame_synonyms = ["blaim", "blame", "blam"]
 
 # Logistical command handlers.
-start_handler = CommandHandler('start', start)
-rules_handler = CommandHandler('rules', rules)
-help_handler = CommandHandler('help', help_message)
+start_handler = CommandHandler(start_synonyms, start)
 feedback_handler = CommandHandler('feedback', feedback, pass_args=True)
 dispatcher.add_handler(start_handler)
-dispatcher.add_handler(rules_handler)
-dispatcher.add_handler(help_handler)
 dispatcher.add_handler(feedback_handler)
 
 # Handlers related to organizing a game.
@@ -678,8 +662,7 @@ spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
 unspectate_handler = CommandHandler('unspectate', unspectate, pass_chat_data=True)
 pending_handler = CommandHandler('listplayers', pending_players,
                                  pass_chat_data=True)
-startgame_handler = CommandHandler('startgame', start_game,
-                                   pass_chat_data=True,)
+startgame_handler = CommandHandler('startgame', start_game)
 endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
 dispatcher.add_handler(newgame_handler)
 dispatcher.add_handler(joingame_handler)
@@ -716,3 +699,5 @@ dispatcher.add_handler(wee_handler)
 dispatcher.add_handler(hoo_handler)
 dispatcher.add_handler(hi_handler)
 dispatcher.add_handler(dm_handler)
+
+updater.start_polling()

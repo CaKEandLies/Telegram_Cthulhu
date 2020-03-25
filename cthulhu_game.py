@@ -6,8 +6,8 @@ Created on Thu Mar 22 11:18:11 2018
 
 This module implements classes needed for a game of Cthulhu.
 
-Throughout the module, an Elder Sign is represented as "E", a blank as "-",
-and Cthulhu as "C".
+TODO: Implement better errors.
+TODO: Implement game settings.
 """
 import random
 import emojis
@@ -18,20 +18,6 @@ class GameError(Exception):
     """
     def __init__(self, message):
         pass
-
-class InvalidMoveError(GameError):
-    """
-    Exceptions that can happen if players attempt impossible tasks.
-    """
-
-class NotInGameError(GameError):
-    pass
-
-class PermissionDeniedError(GameError):
-    """
-    Exceptions that can happen if players attempt commands not allowed.
-    """
-    pass
 
 
 class Card:
@@ -63,7 +49,7 @@ class Card:
                     card_data = line.rstrip().split(",")
                     self.title = card_data[0]
                     self.description = card_data[1]
-                    self.symbol = card_data[2]
+                    self.symbol = emojis.encode(":{}:".format(card_data[2]))
         self.is_flipped = False
 
     def __str__(self):
@@ -71,7 +57,7 @@ class Card:
         Returns the symbolic representation of the card.
         """
         if self.is_flipped:
-            return emojis.encode(":{}:".format(self.symbol))
+            return self.symbol
         else:
             return emojis.encode(":black_circle:")
 
@@ -122,6 +108,18 @@ class PlayerGameData:
         self.has_flashlight = False
 
 
+class PlayerStats:
+    """
+    A class containing statistics about a player's win record.
+
+    Attributes:
+    """
+    def __init__(self):
+        """
+        """
+        pass
+
+
 class Player:
     """
     A player for games of Don't Mess with Cthulhu.
@@ -150,49 +148,17 @@ class Player:
           nickname - Optional. The player's name.
         """
         self.p_id = player_id
-        self.game_status = "Idle"
         if nickname:
             self.nickname = nickname
-        self.role = "None"
-
-    """
-    def __init__(self, name, has_flashlight, is_cultist, player_id=0):
-
-        Initializes an instance of the Player class.
-
-        TODO: phase this out.
-
-        @param name - The player's name.
-        @param has_flashlight - Does the player start with it?
-        @param is_cultist - Whether the player is a cultist.
-        @param player_id - An id corresponding to this player.
-
-        self.p_id = player_id
-        self.name = name
-        self.has_flashlight = has_flashlight
-        self.is_cultist = is_cultist
-        self.hand = Hand([])
-        self.id = player_id
-        self.claim = (0, 0, 0)
-    """
+        self.game_status = "Idle"
+        self.game_data = None
+        self.stats = PlayerStats()
 
     def __str__(self):
         """
         Returns the players name.
         """
         return self.nickname
-
-    def get_hand(self):
-        """
-        Returns the contents of the players' hands as a tuple of (-, E, C).
-
-        TODO: render this defunct.
-
-        Unlike display_hand, this returns an omniscient summary of what's in
-        the player's hand.
-        """
-        return (self.hand.get_blank(), self.hand.get_elder(),
-                self.hand.get_cthulhu())
 
     def hand_summary(self):
         """
@@ -219,51 +185,40 @@ class Player:
             contents += "{} {}(s),".format(hand[card_type], card_type)
         return contents
 
-    def display_hand(self):
+    def display_hand(self, omniscient=False):
         """
         Returns the hand as it should be displayed.
 
-        Unlike get_hand, this accounts for which cards have already been
-        revealed.
+        Arguments:
+          omniscient - If True, shows entire contents of hand.
         """
         display = ""
-        for card in self.game_data.cards:
-            display += str(card)
+        for card in player.game_data.cards:
+            if omniscient:
+                display += card.symbol
+            else:
+                display += str(card)
         return display
-
-    def display_full_hand(self):
-        """
-        Returns the entire contents of the hand, nicely-formatted.
-
-        Unlike display_hand, this displays the entire contents, and unlike
-        get_hand, this is nicely-formatted.
-        """
-        return self.hand.get_full_contents()
 
     def display_claim(self):
         """
-        Displays the player's claim in emoji form.
+        Displays the player's claim in symbolic form.
+
+        TODO: rewrite this.
         """
+        display = ""
+        for card in player.game_data.claim:
+            pass
         blank, sign, cthulhu = self.claim
         if blank == 0 and sign == 0 and cthulhu == 0:
             return None
-        return (blank * "⚪️" + sign * "🔵" + cthulhu * "🔴 ")
-
-    def get_id(self):
-        """
-        Returns the player's id.
-        """
-        return self.id
-
-    def get_is_cultist(self):
-        """
-        Returns True if player is a Cultist, False otherwise.
-        """
-        return self.is_cultist
+        return (blank * "⚪️" + sign * "🔵" + cthulhu * "🔴")
 
     def set_hand(self, hand):
         """
         Sets the player's hand.
+
+        TODO: rewrite this.
 
         @param hand - a Hand object representing the player's hand.
 
@@ -276,6 +231,8 @@ class Player:
     def set_claim(self, blank, elder, cthulhu):
         """
         Set's this person's current claim.
+
+        TODO: Fill this in.
         """
         self.claim = (blank, elder, cthulhu)
 
@@ -306,175 +263,19 @@ class Player:
         return player._be_investigated()
 
 
-class Hand:
+class GameSettings:
     """
-    Contains information about one's hand.
+    Contains game settings that can be passed into a game.
 
     Attributes:
-        elder - Number of elder signs.
-        blank - Number of blanks.
-        cthulhu - Number of cthulhus.
-        picked - Number of times this hand has been picked in this round.
+      expansions - a list of expansions being used.
     """
 
-    def __init__(self, contents):
+    def __init__(self):
         """
-        Initializes a hand given a list of contents.
-
-        @param contents - a list with comma-separated contents.
-
-        @raises ValueError - if unknown element.
+        Initialize to defaults.
         """
-        self.blank = 0
-        self.elder = 0
-        self.cthulhu = 0
-        for element in contents:
-            if "-" in element:
-                self.blank += 1
-            elif "E" in element:
-                self.elder += 1
-            elif "C" in element:
-                self.cthulhu += 1
-            else:
-                raise ValueError("Unrecognized card!")
-        # Shuffle contents of hand.
-        self.picked = 0
-        self.contents = []
-        for element in contents:
-            self.contents.append(element)
-        random.shuffle(self.contents)
-
-    def get_blank(self):
-        """
-        Returns the number of blank cards in the hand.
-        """
-        return self.blank
-
-    def get_elder(self):
-        """
-        Returns the number of elder signs in the hand.
-        """
-        return self.elder
-
-    def get_cthulhu(self):
-        """
-        Returns the number of cthulhus in the hand.
-        """
-        return self.cthulhu
-
-    def can_pick_card(self):
-        """
-        Returns whether a card can be picked.
-        """
-        return self.picked < len(self.contents)
-
-    def get_contents(self):
-        """
-        Returns nicely-formatted contents of the hand, keeping in mind reveals.
-        """
-        hand = ""
-        for i, card in enumerate(self.contents):
-            # Display only revealed cards.
-            if i < self.picked:
-                if "-" in card:
-                    hand += "⚪️"
-                elif "E" in card:
-                    hand += "🔵"
-                elif "C" in card:
-                    hand += "🔴"
-            # All unrevealed cards are blank.
-            else:
-                hand += "⚫"
-        return hand
-
-    def get_full_contents(self):
-        """
-        Returns nicely-formatted contents of the entire hand, sorted.
-        """
-        hand = ""
-        hand = hand + self.get_blank() * "⚪️"
-        hand = hand + self.get_elder() * "🔵"
-        hand = hand + self.get_cthulhu() * "🔴"
-        return hand
-
-    def pick_card(self):
-        """
-        Picks a card from this hand and returns the value.
-
-        @return - Returns a string containing the contents of the card.
-
-        @raises - AssertionError if the hand has already been picked through.
-        """
-        if self.picked > len(self.contents):
-            raise Exception("You can't pick a card from this hand!")
-        self.picked += 1
-        return self.contents[self.picked - 1]
-
-
-class Deck:
-    """
-    A deck containing all Cthulhu cards currently in play.
-
-    Attributes:
-        cthulhus - the number of cthulu cards in the deck.
-        signs - the number of elder signs in the deck.
-        blanks - the number of blank cards in the deck.
-        round_count - how many rounds have previously been played.
-    """
-
-    def __init__(self, num_players):
-        """
-        initializes  deck for the given number of players.
-
-        @raises AssertionError - if number of players isn't 4-10.
-        """
-        self.round_count = 0
-        self.signs = num_players
-        if num_players > 10:
-            raise Exception("Incorrect number of players!")
-        if (num_players > 8):
-            self.cthulhus = 2
-        else:
-            self.cthulhus = 1
-        self.blanks = (5*num_players) - self.signs - self.cthulhus
-        self.num_players = num_players
-
-    def deal(self):
-        """
-        Deals out cards from the deck.
-
-        @return - Returns a list of Hands.
-        """
-        num_cards = 5 - self.round_count
-        n_players = self.num_players
-
-        deck = ["-"] * self.blanks + ["E"] * self.signs + ["C"] * self.cthulhus
-        random.shuffle(deck)
-        hands = []
-        for i in range(n_players):
-            hands.append(Hand(deck[i * num_cards: (i+1) * num_cards]))
-
-        self.round_count += 1
-        return hands
-
-    def return_cards(self, removed):
-        """
-        Updates the deck based on which cards were revealed this turn.
-
-        @raise Warning - if incorrect number of cards removed
-        @raise Exception - if unrecognized card.
-        """
-        if not len(removed) == self.num_players:
-            raise Warning("Incorrect number of cards removed!")
-        for card in removed:
-            if "-" in card:
-                self.blanks -= 1
-            elif "E" in card:
-                self.signs -= 1
-            elif "C" in card:
-                self.cthulhus -= 1
-            else:
-                raise Exception("Unrecognized card!")
+        self.expansions = []
 
 
 class Game:
@@ -484,11 +285,12 @@ class Game:
     Attributes:
         game_id - the game's ID.
         players - A list of players in the game or spectating.
+        game_status - The status of this game.
         round_counter - Number of rounds that have passed.
         deck - A deck of cards representing the game.
+        discard - The discard pile.
         game_settings - The game's settings.
         game_logs - A representation of the game.
-        claims_on - Whether claims are enforced.
 
         whose_claim - Which player currently needs to claim.
         claim_start - The position of the player that started claims.
@@ -510,7 +312,46 @@ class Game:
              7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
              10: player_10_roles}
 
-    def __init__(self, players, claims = False):
+    def __init__(self, game_id, game_settings=None):
+        """
+        Start a new, empty game of Don't Mess with Cthulhu.
+
+        Arguments:
+          game_id - the game's ID.
+        """
+        self.game_id = game_id
+        self.players = []
+        self.game_status = "Unstarted"
+
+    def add_player(self, player, is_playing=True):
+        """
+        Add a new player for the game.
+
+        Arguments:
+          player - a Player class.
+          is_playing - whether the player is playing (True) or spectating.
+        """
+        if player in self.players:
+            raise GameError("Player is already participating!")
+        else:
+            player.game_status = ""
+
+    def remove_player(self, player):
+        """
+        Remove a player, if they were playing.
+        """
+        if player in self.players:
+            remove(player)
+
+    def start_game(self):
+        if self.game_status != "Unstarted":
+            raise GameError("This game has already been started.")
+        else:
+            self.game_status = "Ongoing"
+            # TODO: things that actually would start this game.
+
+
+    def __init__(self, game_id):
         """
         Initializes a game of Don't Mess With Cthulhu given player names.
 
@@ -663,7 +504,7 @@ class Game:
             self.players[i].set_hand(hands[i])
             # Update the game log.
             self.game_log += (str(self.players[i]) + ": ")
-            self.game_log += self.players[i].display_full_hand()
+            self.game_log += self.players[i].display_hand(omniscient=True)
             self.game_log += "\n"
         # Set claims to indicate a new round.
         if self.claims_on:
