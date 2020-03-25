@@ -61,26 +61,40 @@ class TestCardClass(unittest.TestCase):
 
 class TestPlayerClass(unittest.TestCase):
     """
-    A unit test for our Player class.
+    A unit test for our Player class, and for associated classes.
     """
 
-    def test_hand_summary(self):
+    def test_init(self):
         """
-        Test the function that summarizes contents of a hand.
+        Tests that players initialize properly.
+        """
+        player = Player(1, nickname="Test")
+        self.assertEqual(player.nickname, "Test")
+        self.assertEqual(player.p_id, 1)
+        self.assertEqual(player.status, "Idle")
+        self.assertIsNone(player.game_data)
+        self.assertEqual(player.stats.ngcw, 0)
+
+    def test_hand_functions(self):
+        """
+        Test Player GameData.
         """
         test_player = Player(1, nickname="Test")
         test_player.game_data = PlayerGameData("Cultist")
+        # Test hand information before and after giving a hand.
+        self.assertFalse(test_player.hand_summary())
         test_player.game_data.cards = [Card(ctype="Elder Sign"),
                                        Card(ctype="Elder Sign"),
                                        Card(ctype="Mirage"),
                                        Card(ctype="Cthulhu")]
+        self.assertTrue(test_player.hand_summary())
 
 
 class TestGameClass(unittest.TestCase):
     """
     Tests the game class.
     """
-    def test_game_creation:
+    def test_game_creation(self):
         pass
 
 

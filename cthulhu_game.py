@@ -75,12 +75,6 @@ class Card:
         """
         pass
 
-    def is_flipped(self):
-        """
-        Returns whether the card is face-up.
-        """
-        return self.is_flipped
-
     def flip_up(self):
         """
         Flip the card face-up.
@@ -144,13 +138,6 @@ class Player:
         status - the status of the player in the game.
         game_data - if the player is in a game, the data associated with it.
         stats - a dictionary containing a lot of player stats.
-
-        role - the player's role in the game.
-        has_flashlight - Does the player have the flashlight?
-        is_cultist - Is the player a cultist?
-        hand - The player's current hand.
-        player_id - An id corresponding to this player.
-        claim - A tuple representing the player's claim.
     """
 
     def __init__(self, player_id, nickname=None):
@@ -173,6 +160,18 @@ class Player:
         Returns the players name.
         """
         return self.nickname
+
+    def set_hand(self, hand):
+        """
+        Sets the contents of this player's hand.
+        """
+        self.game_data.cards = hand
+
+    def set_claim(self, claim):
+        """
+        Sets the value of this player's claim.
+        """
+        self.game_data.claim = claim
 
     def hand_summary(self):
         """
@@ -217,64 +216,43 @@ class Player:
     def display_claim(self):
         """
         Displays the player's claim in symbolic form.
-
-        TODO: rewrite this.
         """
         display = ""
-        for card in player.game_data.claim:
-            pass
-        blank, sign, cthulhu = self.claim
-        if blank == 0 and sign == 0 and cthulhu == 0:
-            return None
-        return (blank * "⚪️" + sign * "🔵" + cthulhu * "🔴")
+        for card in player.game_data.cards:
+            display += card.symbol
+        return display
 
-    def set_hand(self, hand):
+    def reveal_card(self, pos=None):
         """
-        Sets the player's hand.
+        Reveal a card.
 
-        TODO: rewrite this.
+        Arguments:
+          pos - The position of the card in the hand, 1-indexed.
 
-        @param hand - a Hand object representing the player's hand.
-
-        @raises TypeError - if the parameter submitted is not of type Hand.
+        Raises:
+          GameError - If the card is already revealed.
         """
-        if not isinstance(hand, Hand):
-            raise TypeError("Argument must be of type Hand.")
-        self.hand = hand
+        if self.game_data.has_flashlight:
+            raise GameError("This player has the flashlight.")
+        if pos:
+            try:
+                if self.game_data.cards[pos].is_flipped:
+                    raise GameError("That card is already face-up!")
+                self.game_data.cards[pos].flip_up()
+            except (IndexOutOfBoundsError):
+                raise GameError("Player does not have a card {}".format(pos))
+        else:
+            for i, card in enumerate(player.game_data.cards[pos]):
+                if not card.is_flipped:
+                    card.flip_up()
+                    return
+            raise GameError("There are no face-down cards.")
 
-    def set_claim(self, blank, elder, cthulhu):
+    def toggle_flashlight(self):
         """
-        Set's this person's current claim.
-
-        TODO: Fill this in.
+        Toggle whether this player has the flashlight.
         """
-        self.claim = (blank, elder, cthulhu)
-
-    def can_be_investigated(self):
-        """
-        Returns whether this player can be investigated.
-        """
-        return (self.hand.can_pick_card() and (not self.has_flashlight))
-
-    def _be_investigated(self):
-        """
-        Sets has_flashlight to True and returns an unrevealed card from hand.
-
-        This method should only be called by investigate.
-        """
-        self.has_flashlight = True
-        return self.hand.pick_card()
-
-    def investigate(self, player):
-        """
-        Investigates another player, revealing a card, and reveals the result.
-
-        @raises Exception - if the player does not have the flashlight.
-        """
-        if not self.has_flashlight:
-            raise Exception("Player does not have the flashlight!")
-        self.has_flashlight = False
-        return player._be_investigated()
+        self.game_data.has_flashlight = not self.game_data.has_flashlight
 
 
 class GameSettings:
