@@ -39,6 +39,20 @@ def reply_all(update, context, name):
                              text=read_message("messages/{}.txt".format(name)))
 
 
+def catch_game_errors(func):
+    """
+    This is a wrapper function meant to catch all Game Errors.
+    """
+    def wrapper_game_errors(update, context):
+        try:
+            initialize_chat_data(update, context)
+            initialize_player(update, context)
+            func(update, context)
+        except cg.GameError as err:
+            context.bot.send_message(chat_id=update.effective_chat.id,
+                                     text=err.message)
+    return wrapper_game_errors
+
 
 ### Non-game related commands.
 def start(update, context):
@@ -77,36 +91,34 @@ def new_game(update, context):
     # Initialize a game, if there isn't one already.
     initialize_chat_data(update, context)
 
-
+@catch_game_errors
 def join_game(update, context):
     """
     Allows players to join a game of Don't Mess with Cthulhu in the chat.
 
     TODO: nickname checking.
     """
-    initialize_chat_data(update, context)
-    initialize_player(update, context)
-    try:
-        context.chat_data["game"].add_player(context.user_data["player"])
-        reply_all(update, context, "join_game")
-    except cg.GameError as err:
-        context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text=err.message)
+    context.chat_data["game"].add_player(context.user_data["player"])
+    reply_all(update, context, "join_game")
 
 
+@catch_game_errors
 def unjoin_game(update, context):
     """
     Remove a player from a game.
     """
-    initialize_chat_data(update, context)
-    initialize_player(update, context)
-    try:
-        context.chat_data["game"].remove_player(context.user_data["player"])
-        reply_all(update, context, "unjoin")
-    except cg.GameError as err:
-        context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text=err.message)
+    context.chat_data["game"].remove_player(context.user_data["player"])
+    reply_all(update, context, "unjoin")
 
+
+@catch_game_errors
+def spectate(update, context):
+    """
+    Add a player as a spectator.
+    """
+    context.chat_data["game"].add_player(context.user_data["player"],
+                                         is_playing=False)
+    reply_all(update, context, "spectate")
 
 
 ### Helper functions for game-organizational functions.
@@ -132,52 +144,6 @@ def initialize_player(update, context):
         reply_all(update, context, "new_player")
 
 ##########################################################
-
-
-
-def spectate(bot, update, chat_data=None):
-    """
-    Signs the user up as a spectator for the current game.
-    """
-    # See if there's a game to spectate.
-    if not is_game_ongoing(chat_data) and not is_game_pending(chat_data):
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message("messages/spectate_no_game.txt"))
-    # Ensure the user isn't already playing.
-    elif update.message.from_user.id in chat_data["pending_players"]:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message("messages/spectate_playing.txt"))
-    elif update.message.from_user.id in chat_data["spectators"]:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="You're already spectating!")
-    # Add the player as a spectator if allowed, and send the game log so far.
-    else:
-        try:
-            bot.send_message(chat_id=update.message.from_user.id,
-                             text=read_message("messages/spectate.txt"))
-        except Unauthorized as unauth:
-            bot.send_message(chat_id=update.message.from_chat,
-                             text=read_message("messages/spectate_unauth.txt"))
-            return
-        chat_data["spectators"].append(update.message.from_user.id)
-        if is_game_ongoing(chat_data):
-            bot.send_message(chat_id=update.message.from_user.id,
-                             text=chat_data["game"].get_log())
-
-
-def unspectate(bot, update, chat_data=None):
-    """
-    Removes the user as a spectator, if applicable.
-    """
-    if "spectators" not in chat_data:
-        pass
-    elif update.message.from_user.id in chat_data["spectators"]:
-        chat_data["spectators"].remove(update.message.from_user.id)
-        bot.send_message(chat_id=update.message.from_user.id,
-                         text=read_message("messages/unspectate.txt"))
-        return
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=read_message("messages/unspectate_failure.txt"))
 
 
 def pending_players(bot, update, chat_data=None):
@@ -607,7 +573,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s -'
 # Command synonyms, where they apply.
 start_synonyms = ["start", "help", "rules"]
 joingame_synonyms = ["joingame", "join", "addme", "hibitch"]
-unjoin_synonyms = ["unjoin", "byebitch"]
+unjoin_synonyms = ["unjoin", "byebitch", "unspectate"]
 investigate_synonyms = ["investigate", "invest", "inv", "dig", "dog", "canine",
                         "do", "vore", "nom"]
 claim_synonyms = ["claim", "c"]
@@ -624,16 +590,17 @@ newgame_handler = CommandHandler('newgame', new_game)
 joingame_handler = CommandHandler(joingame_synonyms, join_game)
 unjoin_handler = CommandHandler(unjoin_synonyms, unjoin_game)
 spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
-unspectate_handler = CommandHandler('unspectate', unspectate, pass_chat_data=True)
+dispatcher.add_handler(newgame_handler)
+dispatcher.add_handler(joingame_handler)
+dispatcher.add_handler(unjoin_handler)
+dispatcher.add_handler(spectate_handler)
+
 pending_handler = CommandHandler('listplayers', pending_players,
                                  pass_chat_data=True)
 startgame_handler = CommandHandler('startgame', start_game)
 endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
-dispatcher.add_handler(newgame_handler)
-dispatcher.add_handler(joingame_handler)
-dispatcher.add_handler(unjoin_handler)
-#dispatcher.add_handler(spectate_handler)
-#dispatcher.add_handler(unspectate_handler)
+
+
 #dispatcher.add_handler(pending_handler)
 #dispatcher.add_handler(startgame_handler)
 #dispatcher.add_handler(endgame_handler)

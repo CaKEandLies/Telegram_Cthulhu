@@ -16,8 +16,14 @@ class GameError(Exception):
     """
     Exceptions that might occur in the game.
     """
-    def __init__(self, message):
+    def __init__(self, message, code=0):
         self.message = message
+        self.code = code
+
+class InvalidSettingsError(GameError):
+    """
+    """
+    pass
 
 
 class Card:
@@ -113,11 +119,19 @@ class PlayerStats:
     A class containing statistics about a player's win record.
 
     Attributes:
+        ngcw - Number of games player has won as a cultist.
+        ngcl - Number of games player has lost as a cultist.
+        ngiw - Number of games player has won as an investigator.
+        ngil - Number of games player has lost as an investigator.
     """
     def __init__(self):
         """
+        Initialize all stats to 0.
         """
-        pass
+        self.ngcw = 0
+        self.ngcl = 0
+        self.ngiw = 0
+        self.ngil = 0
 
 
 class Player:
@@ -127,7 +141,7 @@ class Player:
     Attributes:
         p_id - the player's ID.
         nickname - the player's current nickname.
-        game_status - the status of the player in the game.
+        status - the status of the player in the game.
         game_data - if the player is in a game, the data associated with it.
         stats - a dictionary containing a lot of player stats.
 
@@ -150,7 +164,7 @@ class Player:
         self.p_id = player_id
         if nickname:
             self.nickname = nickname
-        self.game_status = "Idle"
+        self.status = "Idle"
         self.game_data = None
         self.stats = PlayerStats()
 
@@ -269,6 +283,8 @@ class GameSettings:
 
     Attributes:
       expansions - a list of expansions being used.
+      min_players - the minimum number of players.
+      max_players - the maximum number of players.
     """
 
     def __init__(self):
@@ -276,6 +292,8 @@ class GameSettings:
         Initialize to defaults.
         """
         self.expansions = []
+        self.min_players = 3
+        self.max_players = 10
 
 
 class Game:
@@ -294,22 +312,6 @@ class Game:
         whose_claim - Which player currently needs to claim.
         claim_start - The position of the player that started claims.
     """
-    # Role breakdowns for each player count. Note that 1/2 player games
-    # do not exist but may be used for testing.
-    player_1_roles = ["Investigator"] * 1 + ["Cultist"] * 1
-    player_2_roles = ["Investigator"] * 1 + ["Cultist"] * 1
-    player_3_roles = ["Investigator"] * 3 + ["Cultist"] * 2
-    player_4_roles = ["Investigator"] * 3 + ["Cultist"] * 2
-    player_5_roles = ["Investigator"] * 4 + ["Cultist"] * 2
-    player_6_roles = ["Investigator"] * 4 + ["Cultist"] * 2
-    player_7_roles = ["Investigator"] * 5 + ["Cultist"] * 3
-    player_8_roles = ["Investigator"] * 5 + ["Cultist"] * 3
-    player_9_roles = ["Investigator"] * 6 + ["Cultist"] * 4
-    player_10_roles = ["Investigator"] * 7 + ["Cultist"] * 4
-    ROLES = {1: player_1_roles, 2: player_2_roles, 3: player_3_roles,
-             4: player_4_roles, 5: player_5_roles, 6: player_6_roles,
-             7: player_7_roles, 8: player_8_roles, 9: player_9_roles,
-             10: player_10_roles}
 
     def __init__(self, game_settings=None):
         """
@@ -334,13 +336,16 @@ class Game:
             raise GameError("The game has already started.")
         # Check that the player hasn't already joined.
         if player in self.players:
-            raise GameError("You're already in this game.")
-            
+            if player.status == "Playing":
+                raise GameError("You're already in this game.")
+            elif player.status == "Spectating":
+                raise GameError("You're already spectating this game.")
+
         # Add the player as a participant or spectator.
         if is_playing:
-            player.game_status = "Playing"
+            player.status = "Playing"
         else:
-            player.game_status = "Spectating"
+            player.status = "Spectating"
         self.players.append(player)
 
     def remove_player(self, player):
@@ -352,12 +357,63 @@ class Game:
         else:
             raise GameError("You weren't in the game.")
 
+    def count_active_players(self):
+        """
+        A helper function that counts the number of non-spectating players.
+        """
+        return sum([p.status=="Playing" for p in self.players])
+
     def start_game(self):
+        """
+        Starts the pending game.
+        """
         if self.game_status != "Unstarted":
             raise GameError("This game has already been started.")
         else:
             self.game_status = "Ongoing"
             # TODO: things that actually would start this game.
+
+    def create_deck(self):
+        """
+        Create the deck.
+
+        TODO: Implement Necronomicon and Objects of Power.
+        """
+        self.deck = []
+        self.discard = []
+        n_players = self.count_active_players()
+        # Add Cthulhu card(s).
+        if n_players > 8:
+            self.deck.append(Card(ctype="Cthulhu"))
+        self.deck.append(Card(ctype="Cthulhu"))
+        # Add Elder Signs.
+        for i in range(n_players):
+            self.deck.append(Card(ctype="Elder Sign"))
+        # Add blanks.
+        for i in range((n_players * 5) - len(deck)):
+            self.deck.append(Card(ctype="Blank"))
+
+    def assign_roles(self):
+        """
+        Assign roles to players.
+        """
+        # Determine the number of investigators and cultists.
+        n_players = self.count_active_players()
+        with open("roles/role_info.txt") as f:
+            for line in f:
+                if str(n_players)==line[0]:
+                    role_data = line.rstrip().split(",")
+                    n_investigators = role_data[1]
+                    n_cultists = role_data[2]
+        if not n_investigators:
+            raise GameError("Failed to find a role setup.")
+        # Make a deck of roles and distribute them.
+        roles = ["Investigator"] * n_investigators + ["Cultist"] * n_cultists
+        random.shuffle(roles)
+        for i, p in enumerate([p for p in self.players if p.status == "Playing"]):
+            p.game_data.role = roles[i]
+
+    ############################
 
     def get_roles(self):
         """

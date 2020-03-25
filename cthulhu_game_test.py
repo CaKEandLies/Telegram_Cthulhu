@@ -74,7 +74,14 @@ class TestPlayerClass(unittest.TestCase):
                                        Card(ctype="Elder Sign"),
                                        Card(ctype="Mirage"),
                                        Card(ctype="Cthulhu")]
-        print(test_player.hand_summary())
+
+
+class TestGameClass(unittest.TestCase):
+    """
+    Tests the game class.
+    """
+    def test_game_creation:
+        pass
 
 
 if __name__ == "__main__":
