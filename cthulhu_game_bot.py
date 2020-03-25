@@ -88,11 +88,25 @@ def join_game(update, context):
     initialize_player(update, context)
     try:
         context.chat_data["game"].add_player(context.user_data["player"])
+        reply_all(update, context, "join_game")
     except cg.GameError as err:
-        reply_all(update, context, "test")
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text=err.message)
-    print(context.chat_data["game"].players)
+
+
+def unjoin_game(update, context):
+    """
+    Remove a player from a game.
+    """
+    initialize_chat_data(update, context)
+    initialize_player(update, context)
+    try:
+        context.chat_data["game"].remove_player(context.user_data["player"])
+        reply_all(update, context, "unjoin")
+    except cg.GameError as err:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text=err.message)
+
 
 
 ### Helper functions for game-organizational functions.
@@ -119,26 +133,6 @@ def initialize_player(update, context):
 
 ##########################################################
 
-
-
-
-def unjoin(bot, update, chat_data=None):
-    """
-    Removes a player from a pending game, if applicable.
-    """
-    # Check that a game is pending.
-    if not is_game_pending(chat_data):
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/unjoin_failure.txt'))
-        return
-    # Check that they're playing and remove if so.
-    if update.message.from_user.id not in chat_data["pending_players"]:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/unjoin_failure.txt'))
-    else:
-        del chat_data["pending_players"][update.message.from_user.id]
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=read_message('messages/unjoin.txt'))
 
 
 def spectate(bot, update, chat_data=None):
@@ -628,7 +622,7 @@ dispatcher.add_handler(feedback_handler)
 # Handlers related to organizing a game.
 newgame_handler = CommandHandler('newgame', new_game)
 joingame_handler = CommandHandler(joingame_synonyms, join_game)
-unjoin_handler = CommandHandler(unjoin_synonyms, unjoin, pass_chat_data=True)
+unjoin_handler = CommandHandler(unjoin_synonyms, unjoin_game)
 spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
 unspectate_handler = CommandHandler('unspectate', unspectate, pass_chat_data=True)
 pending_handler = CommandHandler('listplayers', pending_players,
@@ -638,11 +632,11 @@ endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
 dispatcher.add_handler(newgame_handler)
 dispatcher.add_handler(joingame_handler)
 dispatcher.add_handler(unjoin_handler)
-dispatcher.add_handler(spectate_handler)
-dispatcher.add_handler(unspectate_handler)
-dispatcher.add_handler(pending_handler)
-dispatcher.add_handler(startgame_handler)
-dispatcher.add_handler(endgame_handler)
+#dispatcher.add_handler(spectate_handler)
+#dispatcher.add_handler(unspectate_handler)
+#dispatcher.add_handler(pending_handler)
+#dispatcher.add_handler(startgame_handler)
+#dispatcher.add_handler(endgame_handler)
 
 # Handlers for in-game commands.
 investigate_handler = CommandHandler(investigate_synonyms, investigate,
