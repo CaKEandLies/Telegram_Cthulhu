@@ -20,6 +20,7 @@ class GameError(Exception):
         self.message = message
         self.code = code
 
+
 class InvalidSettingsError(GameError):
     """
     """
@@ -95,6 +96,7 @@ class PlayerGameData:
     Attributes:
       role - the player's role.
       cards - the cards in the player's hand.
+      can_claim - whether the player can claim currently.
       claim - what the player claims to have.
       has_flashlight - whether the player has the flashlight.
     """
@@ -104,6 +106,7 @@ class PlayerGameData:
         """
         self.role = role
         self.cards = []
+        self.can_claim = False
         self.claim = None
         self.has_flashlight = False
 
@@ -156,7 +159,12 @@ class Player:
         self.stats = PlayerStats()
 
     def start_playing(self, role):
-        # # TODO:
+        """
+        Updates instance to having started a game.
+
+        Raises:
+          Game Error - If the player wasn't in pending game.
+        """
         self.game_data = PlayerGameData(role)
 
     def start_spectating(self):
@@ -300,6 +308,7 @@ class Game:
         discard - The discard pile.
         game_settings - The game's settings.
         game_logs - A representation of the game.
+        winner - The winning team.
 
         whose_claim - Which player currently needs to claim.
         claim_start - The position of the player that started claims.
@@ -310,10 +319,11 @@ class Game:
         Start a new, empty game of Don't Mess with Cthulhu.
 
         Arguments:
-          game_id - the game's ID.
+          game_settings - The game's settings.
         """
         self.players = []
         self.game_status = "Unstarted"
+        self.winner = None
 
     def add_player(self, player, is_playing=True):
         """
@@ -364,11 +374,14 @@ class Game:
     def start_game(self):
         """
         Starts the pending game.
+
+        Raises:
+          GameError - If the game has already been started.
         """
         if self.game_status != "Unstarted":
             raise GameError("This game has already been started.")
         else:
-            # Assign roles.
+            # Assign roles to players.
             roles = self.make_roles()
             for i, p in enumerate(self.get_active_players()):
                 p.start_playing(roles[i])
@@ -431,56 +444,47 @@ class Game:
             for p in self.get_active_players():
                 p.give_card(self.deck.pop())
 
+    def get_log(self, setting=None):
+        """
+        Gets a display of the game state, according to settings.
+        """
+        pass
 
+    def set_claim(self, player, claim):
+        """
+        Sets the claim for a player and updates the game log accordingly.
+        """
+        pass
+
+    def investigate(self, user, target, pos=0):
+        """
+        Has one player investigate another.
+        """
+        pass
+
+    def new_round(self):
+        """
+        Collect and redeal cards.
+        """
+        pass
+
+    def check_winner(self):
+        """
+        Checks whether a team has won.
+        """
+        pass
+
+    def end_game(self):
+        """
+        Updates player statistics and finishes a game.
+        """
+        pass
+
+    def get_position(self, arg):
+        """
+        """
+        pass
     ############################
-
-    def get_roles(self):
-        """
-        Returns a dictionary of player ids and roles.
-        """
-        roles = {}
-        for player in self.players:
-            roles[player.get_id()] = player.get_is_cultist()
-        return roles
-
-    def get_hands(self):
-        """
-        Returns a dictionary of player ids and hands.
-        """
-        hands = {}
-        for player in self.players:
-            hands[player.get_id()] = player.hand_summary()
-        return hands
-
-    def get_formatted_hands(self):
-        """
-        Returns a formatted string of players hands.
-        """
-        result = " "
-        for player in self.players:
-            result += str(player) + ": "
-            result += player.display_full_hand() + "\n"
-        return result
-
-    def get_log(self):
-        """
-        Returns a log of the game, which includes hands and roles.
-        """
-        return self.game_log
-
-    def can_investigate_position(self, position):
-        """
-        Returns whether the player at position can be investigated.
-
-        @param position - the player's position.
-        """
-        return self.players[position].can_be_investigated()
-
-    def where_flashlight(self):
-        """
-        Returns the position of the flashlight.
-        """
-        return self.flashlight
 
     def get_whose_claim(self):
         """

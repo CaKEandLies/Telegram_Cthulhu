@@ -54,6 +54,15 @@ def catch_game_errors(func):
     return wrapper_game_errors
 
 
+@catch_game_errors
+def display_board(update, context):
+    """
+    Displays the board back to the chat.
+    """
+    board = context.chat_data["game"].get_board()
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text=board)
+
 ### Non-game related commands.
 def start(update, context):
     """
