@@ -1,0 +1,1 @@
+You are a Cultist. You win if Cthulhu is found or if the game ends without an Investigator victory.

@@ -8,7 +8,6 @@ This program implements a Telegram bot for games of Don't Mess With Cthulhu.
 
 TODO:
     Write more detailed messages in response to commands.
-    Write flavortext.
 """
 
 import telegram
@@ -37,6 +36,14 @@ def reply_all(update, context, name):
     """
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text=read_message("messages/{}.txt".format(name)))
+
+
+def send_dm(user_id, context, message):
+    """
+    Sends a test message directly to the user.
+    """
+    context.bot.send_message(chat_id=user_id,
+                             text=message)
 
 
 def catch_game_errors(func):
@@ -130,14 +137,6 @@ def spectate(update, context):
     reply_all(update, context, "spectate")
 
 
-@catch_game_errors
-def start_game(update, context):
-    """
-    Start the pending game.
-    """
-    context.chat_data["game"].start_game()
-    reply_all(update, context, "start_game")
-
 
 ### Helper functions for game-organizational functions.
 def initialize_chat_data(update, context):
@@ -160,6 +159,48 @@ def initialize_player(update, context):
     if "player" not in context.user_data:
         context.user_data["player"] = cg.Player(update.message.from_user.id)
         reply_all(update, context, "new_player")
+
+
+
+### Game-running functions.
+@catch_game_errors
+def start_game(update, context):
+    """
+    Start the pending game.
+    """
+    context.chat_data["game"].start_game()
+    reply_all(update, context, "start_game")
+    send_hand_info(update, context)
+    send_role_info(update, context)
+
+
+def claim(update, context):
+    pass
+
+
+def investigate(update, context):
+    pass
+
+
+
+### Helper functions for above.
+@catch_game_errors
+def send_hand_info(update, context):
+    """
+    DMs every player information about their hand.
+
+    TODO: Handle spectators.
+    """
+    players = context.chat_data["game"].get_active_players()
+    for p in players:
+        send_dm(p.p_id, context, p.hand_summary())
+
+
+@catch_game_errors
+def send_role_info(update, context):
+    players = context.chat_data["game"].get_active_players()
+    for p in players:
+        send_dm(p.p_id, context, p.game_data.role)
 
 ##########################################################
 
@@ -191,31 +232,6 @@ def end_game(bot, update, chat_data=None):
 
 
 ### Required to set up games.
-def is_game_ongoing(chat_data):
-    """
-    Determines whether a game is ongoing given chat data.
-
-    @param chat_data - the chat_data for a given chat.
-    """
-    if "game_is_ongoing" in chat_data:
-        if chat_data["game_is_ongoing"]:
-            return True
-    return False
-
-
-def is_game_pending(chat_data):
-    """
-    Determines whether a game is pending given chat data.
-
-    @param chat_data - the chat_data for a given chat.
-    """
-    if "game_is_pending" in chat_data:
-        if chat_data["game_is_pending"]:
-            return True
-    return False
-
-
-
 
 
 def is_nickname_valid(name, user_id, chat_data):
@@ -507,35 +523,6 @@ def investigate(bot, update, chat_data=None, args=None):
         bot.send_message(chat_id=update.message.chat_id,
                          text=chat_data["game"].display_board())
 
-
-### Hidden commands and other miscellany.
-def wee(bot, update):
-    """
-    Replies with a hoo command.
-    """
-    bot.send_message(chat_id=update.message.chat_id, text="/hoo")
-
-
-def hoo(bot, update):
-    """
-    Replies with a wee command.
-    """
-    bot.send_message(chat_id=update.message.chat_id, text="/wee")
-
-
-def hi(bot, update):
-    """
-    Replies with a hi command.
-    """
-    bot.send_message(chat_id=update.message.chat_id, text="/hi")
-
-
-def send_dm(bot, update):
-    """
-    Sends a test message directly to the user.
-    """
-    bot.send_message(chat_id=update.message.from_user.id,
-                     text="sliding into those dungeon masters!")
 
 
 ### Getting the bot up

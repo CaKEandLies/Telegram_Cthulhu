@@ -371,6 +371,12 @@ class Game:
         """
         return [p for p in self.players if p.status=="Playing"]
 
+    def get_spectators(self):
+        """
+        A helper function that returns the spectating players.
+        """
+        return [p for p in self.players if p.status=="Spectating"]
+
     def start_game(self):
         """
         Starts the pending game.
