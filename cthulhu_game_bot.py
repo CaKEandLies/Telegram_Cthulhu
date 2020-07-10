@@ -40,10 +40,32 @@ def reply_all(update, context, name):
 
 def send_dm(user_id, context, message):
     """
-    Sends a test message directly to the user.
+    Sends a test message directly to a specified user.
     """
     context.bot.send_message(chat_id=user_id,
                              text=message)
+
+
+def initialize_chat_data(update, context):
+    """
+    Resets chat data to be that of a chat with no pending game.
+    TODO: this docstring
+    @param chat_data - the chat_data for a given chat.
+    """
+    if "game" not in context.chat_data:
+        context.chat_data["game"] = cg.Game()
+        reply_all(update, context, "new_game")
+    if "game_settings" not in context.chat_data:
+        context.chat_data["game_settings"] = cg.GameSettings()
+
+
+def initialize_player(update, context):
+    """
+    If a user doesn't have a player profile associated, make one.
+    """
+    if "player" not in context.user_data:
+        context.user_data["player"] = cg.Player(update.message.from_user.id)
+        reply_all(update, context, "new_player")
 
 
 def catch_game_errors(func):
@@ -93,7 +115,7 @@ def feedback(update, context):
 
 
 
-### Game-organizational functions.
+### Game-organizational commands.
 def new_game(update, context):
     """
     Starts a new game of Don't Mess with Cthulhu in the given chat.
@@ -138,31 +160,7 @@ def spectate(update, context):
 
 
 
-### Helper functions for game-organizational functions.
-def initialize_chat_data(update, context):
-    """
-    Resets chat data to be that of a chat with no pending game.
-    TODO: this docstring
-    @param chat_data - the chat_data for a given chat.
-    """
-    if "game" not in context.chat_data:
-        context.chat_data["game"] = cg.Game()
-        reply_all(update, context, "new_game")
-    if "game_settings" not in context.chat_data:
-        context.chat_data["game_settings"] = cg.GameSettings()
-
-
-def initialize_player(update, context):
-    """
-    If a user doesn't have a player profile associated, make one.
-    """
-    if "player" not in context.user_data:
-        context.user_data["player"] = cg.Player(update.message.from_user.id)
-        reply_all(update, context, "new_player")
-
-
-
-### Game-running functions.
+### Game-running commands.
 @catch_game_errors
 def start_game(update, context):
     """
@@ -170,8 +168,8 @@ def start_game(update, context):
     """
     context.chat_data["game"].start_game()
     reply_all(update, context, "start_game")
-    send_hand_info(update, context)
     send_role_info(update, context)
+    send_hand_info(update, context)
 
 
 def claim(update, context):
@@ -179,6 +177,10 @@ def claim(update, context):
 
 
 def investigate(update, context):
+    pass
+
+
+def end_game(update, context):
     pass
 
 
@@ -200,7 +202,52 @@ def send_hand_info(update, context):
 def send_role_info(update, context):
     players = context.chat_data["game"].get_active_players()
     for p in players:
-        send_dm(p.p_id, context, p.game_data.role)
+        send_dm(p.p_id, context, p.role_summary())
+
+
+def interpret_claim(game, args):
+    """
+    Interprets a claim and returns it as (blank, signs, cthulhus).
+
+    Raises:
+      GameError if the claim is invalid.
+    """
+    hand_size = 6 - game.round_counter
+    signs = 0
+    cthulhus = 0
+    # Parse single-argument claims.
+    if len(args) == 1:
+        if "rock" in args[0]:
+            pass
+        elif "c" in args[0]:
+            cthulhus = 1
+    # Parse 2-argument claims.
+    if len(args) == 2:
+        signs = args[0]
+        # The second can be either C or a number.
+        if "c" in args[1].lower():
+            cthulhus = 1
+    # Ensure the claim is valid.
+    try:
+        signs = int(signs)
+        cthulhus = int(cthulhus)
+        assert signs + cthulhus <= hand_size
+    except ValueError, AssertionError as e:
+        raise GameError("Invalid claim!")
+    return (hand_size - signs - cthulhus, signs, cthulhus)
+
+
+### Useful in-game commands.
+def blame(update, context):
+    pass
+
+
+def display_board(update, context):
+    pass
+
+
+def display_log(update, context):
+    pass
 
 ##########################################################
 
@@ -287,48 +334,6 @@ def claimsettings(bot, update, chat_data=None, args=None):
 
 
 ### Gameplay-related functions.
-def interpret_claim(game, args):
-    """
-    Interprets a user's claim, and returns (-, E, C). Returns False if unknown.
-    """
-    hand_size = 6 - game.round_number
-    # Interpret single-argument claims.
-    if len(args) == 0:
-        return False
-    elif len(args) == 1:
-        # See if the first argument is a cthulhu claim.
-        if "rocks" in args[0].lower():
-            return (hand_size, 0, 0)
-        elif "c" in args[0].lower():
-            return (hand_size - 1, 0, 1)
-        # Interpret first number as number of elder signs.
-        try:
-            signs = int(args[0])
-            assert signs <= hand_size
-            return (hand_size - signs, signs, 0)
-        except (ValueError, AssertionError) as e:
-            return False
-    # Interpret double-argument claims.
-    elif len(args) > 1:
-        # The first argument must be a number.
-        try:
-            signs = int(args[0])
-        except ValueError as e:
-            return False
-        # The second can be either C or a number.
-        if "c" in args[1].lower():
-            cthulhus = 1
-        else:
-            try:
-                cthulhus = int(args[1])
-            except ValueError as e:
-                return False
-        # Check the claim fits in a hand size.
-        if signs + cthulhus > hand_size:
-            return False
-        else:
-            return (hand_size - signs - cthulhus, signs, cthulhus)
-
 def claim(bot, update, chat_data=None, args=None):
     """
     Allows players to declare their claims.
@@ -411,41 +416,6 @@ def display(bot, update, chat_data):
                          text=chat_data["game"].display_board())
 
 
-def send_roles(bot, game, chat_data):
-    """
-    Sends roles to players and spectators in the game.
-    """
-    roles = game.get_roles()
-    spicy = random.randint(0, 100)
-    for user_id, is_cultist in roles.items():
-        if is_cultist:
-            bot.send_message(chat_id=user_id, text="You're a Cultist.")
-            if spicy < 3:
-                bot.send_message(chat_id=user_id,
-                                 text=read_message("messages/cultist_spam.txt"))
-        else:
-            bot.send_message(chat_id=user_id, text="You're an Investigator.")
-            if spicy < 3:
-                bot.send_message(chat_id=user_id,
-                                 text=read_message("messages/investigator_spam.txt"))
-    # Send roles to spectators.
-    for user_id in chat_data["spectators"]:
-        bot.send_message(chat_id=user_id, text=game.get_log())
-
-
-def send_hands(bot, game, chat_data):
-    """
-    Sends hands to players and spectators in the game.
-    """
-    # Generate and send to players.
-    hands = game.get_hands()
-    for user_id, hand in hands.items():
-        bot.send_message(chat_id=user_id, text=hand)
-    # Send info to spectators.
-    for spectator_id in chat_data["spectators"]:
-        bot.send_message(chat_id=spectator_id, text=game.get_formatted_hands())
-
-
 def begin_game(bot, game, chat_data):
     """
     Sends out opening information.
@@ -525,7 +495,7 @@ def investigate(bot, update, chat_data=None, args=None):
 
 
 
-### Getting the bot up
+### Bot handling.
 # Set up the bot.
 # If you want to use this bot yourself, please message me directly.
 token = open('ignore/token.txt', 'r').read()
@@ -553,14 +523,16 @@ blame_synonyms = ["blaim", "blame", "blam"]
 # Logistical command handlers.
 start_handler = CommandHandler(start_synonyms, start)
 feedback_handler = CommandHandler('feedback', feedback)
+dm_handler = CommandHandler('send_dm', send_dm)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(feedback_handler)
+dispatcher.add_handler(dm_handler)
 
 # Handlers related to organizing a game.
 newgame_handler = CommandHandler('newgame', new_game)
 joingame_handler = CommandHandler(joingame_synonyms, join_game)
 unjoin_handler = CommandHandler(unjoin_synonyms, unjoin_game)
-spectate_handler = CommandHandler('spectate', spectate, pass_chat_data=True)
+spectate_handler = CommandHandler('spectate', spectate)
 startgame_handler = CommandHandler('startgame', start_game)
 dispatcher.add_handler(newgame_handler)
 dispatcher.add_handler(joingame_handler)
@@ -593,15 +565,6 @@ claimsettings_handler = CommandHandler('claimsettings', claimsettings,
                                      pass_chat_data=True, pass_args=True)
 dispatcher.add_handler(claimsettings_handler)
 
-# Handlers for "hidden" commands.
-wee_handler = CommandHandler('wee', wee)
-hoo_handler = CommandHandler('hoo', hoo)
-hi_handler = CommandHandler('hi', hi)
-dm_handler = CommandHandler('send_dm', send_dm)
-dispatcher.add_handler(wee_handler)
-dispatcher.add_handler(hoo_handler)
-dispatcher.add_handler(hi_handler)
-dispatcher.add_handler(dm_handler)
 
 updater.start_polling()
 updater.idle()

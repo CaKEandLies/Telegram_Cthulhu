@@ -11,6 +11,7 @@ TODO: Implement game settings.
 """
 import random
 import emojis
+import itertools
 
 class GameError(Exception):
     """
@@ -166,6 +167,8 @@ class Player:
           Game Error - If the player wasn't in pending game.
         """
         self.game_data = PlayerGameData(role)
+        self.status = "Playing"
+        self.game_data.can_claim = True
 
     def start_spectating(self):
         # Todo
@@ -193,7 +196,10 @@ class Player:
         """
         Sets the value of this player's claim.
         """
+        if not self.game_data.can_claim:
+            raise GameError("You cannot claim right now.")
         self.game_data.claim = claim
+        self.game_data.can_claim = False
 
     def hand_summary(self):
         """
@@ -217,8 +223,23 @@ class Player:
             else:
                 hand[card.title] = 1
         for card_type in hand:
-            contents += "{} {}(s),".format(hand[card_type], card_type)
+            contents += "{} {}(s), ".format(hand[card_type], card_type)
         return contents
+
+    def role_summary(self):
+        """
+        Displays the player's role and win condition.
+
+        Returns:
+          contents - a string summarizing the role.
+
+        Raises:
+          GameError - if the player is not in a game.
+        """
+        contents = ""
+        if self.status != "Playing":
+            raise GameError("Not currently playing a game.")
+        return self.game_data.role
 
     def display_hand(self, omniscient=False):
         """
@@ -240,35 +261,12 @@ class Player:
         Displays the player's claim in symbolic form.
         """
         display = ""
-        for card in self.game_data.cards:
+        for card in self.game_data.claim:
             display += card.symbol
         return display
 
     def reveal_card(self, pos=None):
-        """
-        Reveal a card.
-
-        Arguments:
-          pos - The position of the card in the hand, 1-indexed.
-
-        Raises:
-          GameError - If the card is already revealed.
-        """
-        if self.game_data.has_flashlight:
-            raise GameError("This player has the flashlight.")
-        if pos:
-            try:
-                if self.game_data.cards[pos].is_flipped:
-                    raise GameError("That card is already face-up!")
-                self.game_data.cards[pos].flip_up()
-            except (IndexOutOfBoundsError):
-                raise GameError("Player does not have a card {}".format(pos))
-        else:
-            for i, card in enumerate(player.game_data.cards[pos]):
-                if not card.is_flipped:
-                    card.flip_up()
-                    return
-            raise GameError("There are no face-down cards.")
+        pass
 
     def toggle_flashlight(self):
         """
@@ -302,16 +300,18 @@ class Game:
 
     Attributes:
         players - A list of players in the game or spectating.
+
         game_status - The status of this game.
         round_counter - Number of rounds that have passed.
+        phase - Whether it's time for claims or investigation.
+        turn - How many turns have passed in the current phase.
+
         deck - A deck of cards representing the game.
         discard - The discard pile.
+
         game_settings - The game's settings.
         game_logs - A representation of the game.
         winner - The winning team.
-
-        whose_claim - Which player currently needs to claim.
-        claim_start - The position of the player that started claims.
     """
 
     def __init__(self, game_settings=None):
@@ -323,7 +323,7 @@ class Game:
         """
         self.players = []
         self.game_status = "Unstarted"
-        self.winner = None
+        self.game_settings = GameSettings()
 
     def add_player(self, player, is_playing=True):
         """
@@ -377,6 +377,22 @@ class Game:
         """
         return [p for p in self.players if p.status=="Spectating"]
 
+    def get_current_player(self):
+        """Get the current player."""
+        # check which phase.
+        # if claims: see who can claim.
+        # if investigation: see who has light.
+
+    def get_next_player(self, player):
+        """Get the next active player."""
+        ind = self.players.index(player)
+        while True:
+            ind += 1
+            if ind == len(self.players):
+                ind = 0
+            if self.players[ind].status == "Playing":
+                return self.players[ind]
+
     def start_game(self):
         """
         Starts the pending game.
@@ -398,6 +414,9 @@ class Game:
             random.choice(self.get_active_players()).toggle_flashlight()
             # Note that the game is ongoing.
             self.game_status = "Ongoing"
+            self.round_counter = 1
+            self.phase = "Claims"
+            self.turn = 1
 
     def create_deck(self):
         """
@@ -435,7 +454,7 @@ class Game:
                     n_cultists = int(role_data[2])
                     got_info = True
         if not got_info:
-            raise GameError("Failed to find a role setup.")
+            raise GameError("Failed to find a role setup for {} players.").format(self.count_active_players)
         # Make a deck of roles and distribute them.
         roles = ["Investigator"] * n_investigators + ["Cultist"] * n_cultists
         random.shuffle(roles)
@@ -460,6 +479,8 @@ class Game:
         """
         Sets the claim for a player and updates the game log accordingly.
         """
+        player.set_claim(claim)
+        self.get_next_player(player).game_data.can_claim = True
         pass
 
     def investigate(self, user, target, pos=0):
@@ -468,22 +489,74 @@ class Game:
         """
         pass
 
+    def new_turn(self):
+        """Check for winners, etc."""
+        self.check_winner()
+        self.turn += 1
+        if self.turn > self.count_active_players:
+            if self.phase == "Claims":
+                self.new_phase()
+            else:
+                self.new_round()
+
+    def new_phase(self):
+        """Transition from claims to investigations."""
+        self.phase = "Investigation"
+        self.turn = 1
+        for p in self.get_active_players:
+            p.game_data.can_claim = True
+
     def new_round(self):
         """
         Collect and redeal cards.
         """
-        pass
+        self.phase = "Claims"
+        self.turn = 1
+        # Reset player data as needed.
+        for p in self.get_active_players:
+            # Return cards to deck or discard.
+            for card in p.game_data.cards:
+                if card.is_flipped:
+                    self.discard.append(card)
+                else:
+                    self.deck.append(card)
+            p.game_data.cards = []
+            # Ensure claims will work.
+            if p.game_data.has_flashlight:
+                p.game_data.can_claim = True
+            else:
+                p.game_data.can_claim = False
+        # Deal out cards again.
+        self.deal_cards()
 
     def check_winner(self):
         """
         Checks whether a team has won.
         """
-        pass
+        cards_revealed = 0
+        signs_found = 0
+        # Search through all revealed cards.
+        revealed = [p.game_data.cards for p in self.get_active_players]
+        revealed.append(self.discard)
+        for card in itertools.chain(*revealed):
+            if card.is_flipped:
+                cards_revealed += 1
+                if card.title == "Cthulhu":
+                    self.winner = "Cultist"
+                elif card.title == "Elder Sign":
+                    signs_found += 1
+        if signs_found >= self.count_active_players():
+            self.winner = "Investigator"
+        elif cards_revealed >= self.count_active_players() * 4:
+            self.winner = "Cultist"
 
     def end_game(self):
         """
         Updates player statistics and finishes a game.
         """
+        self.game_status = "Ended"
+        # print game log
+        # update player stats
         pass
 
     def get_position(self, arg):
