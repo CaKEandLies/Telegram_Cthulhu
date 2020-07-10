@@ -38,6 +38,13 @@ def reply_all(update, context, name):
                              text=read_message("messages/{}.txt".format(name)))
 
 
+def send_to_all(update, context, message):
+    """
+    Send a message directly to chat.
+    """
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text=message)
+
 def send_dm(user_id, context, message):
     """
     Sends a test message directly to a specified user.
@@ -65,6 +72,7 @@ def initialize_player(update, context):
     """
     if "player" not in context.user_data:
         context.user_data["player"] = cg.Player(update.message.from_user.id)
+        context.user_data["player"].nickname = update.message.from_user.first_name
         reply_all(update, context, "new_player")
 
 
@@ -88,7 +96,7 @@ def display_board(update, context):
     """
     Displays the board back to the chat.
     """
-    board = context.chat_data["game"].get_board()
+    board = context.chat_data["game"].display_board()
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text=board)
 
@@ -172,16 +180,25 @@ def start_game(update, context):
     send_hand_info(update, context)
 
 
+@catch_game_errors
 def claim(update, context):
-    pass
+    blank, elder, cthulhu = interpret_claim(context.chat_data["game"],
+                                            context.args)
+    context.chat_data["game"].set_claim(context.user_data["player"],
+                                        blank, elder, cthulhu)
+    send_to_all(update, context, context.chat_data["game"].display_board())
 
 
+@catch_game_errors
 def investigate(update, context):
-    pass
+    target = find_player(context.chat_data["game"], context.args)
+    context.chat_data["game"].investigate(context.user_data["player"], target)
+    send_to_all(update, context, context.chat_data["game"].display_board())
 
 
 def end_game(update, context):
-    pass
+    context.chat_data["game"] = None
+    reply_all(update, context, "end_game")
 
 
 
@@ -221,6 +238,8 @@ def interpret_claim(game, args):
             pass
         elif "c" in args[0]:
             cthulhus = 1
+        else:
+            signs = args[0]
     # Parse 2-argument claims.
     if len(args) == 2:
         signs = args[0]
@@ -232,9 +251,23 @@ def interpret_claim(game, args):
         signs = int(signs)
         cthulhus = int(cthulhus)
         assert signs + cthulhus <= hand_size
-    except ValueError, AssertionError as e:
-        raise GameError("Invalid claim!")
+    except (ValueError, AssertionError) as e:
+        raise cg.GameError("Invalid claim!")
     return (hand_size - signs - cthulhus, signs, cthulhus)
+
+
+def find_player(game, args):
+    # Look for a player's seat.
+    try:
+        seat = int(args[0])
+        return game.get_active_players()[seat - 1]
+    except (IndexError, ValueError) as e:
+        pass
+    # Look for a player by name.
+    for player in game.players.get_active_players:
+        if arg[0] in str(player):
+            return player
+    raise cg.GameError("That doesn't seem to be a player.")
 
 
 ### Useful in-game commands.
@@ -242,8 +275,11 @@ def blame(update, context):
     pass
 
 
-def display_board(update, context):
-    pass
+def display(bot, update, chat_data):
+    """
+    Displays the board.
+    """
+    send_to_all(update, context, context.chat_data["game"].display_board())
 
 
 def display_log(update, context):
@@ -334,7 +370,7 @@ def claimsettings(bot, update, chat_data=None, args=None):
 
 
 ### Gameplay-related functions.
-def claim(bot, update, chat_data=None, args=None):
+def claim_old(bot, update, chat_data=None, args=None):
     """
     Allows players to declare their claims.
     """
@@ -407,13 +443,7 @@ def blame(bot, update, chat_data):
                          parse_mode=telegram.ParseMode.MARKDOWN)
 
 
-def display(bot, update, chat_data):
-    """
-    Displays the board.
-    """
-    if is_game_ongoing(chat_data):
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=chat_data["game"].display_board())
+
 
 
 def begin_game(bot, game, chat_data):
@@ -432,11 +462,7 @@ def can_investigate(bot, user_id, game):
     return game.get_position(player_id=user_id) == game.where_flashlight()
 
 
-def investigate(bot, update, chat_data=None, args=None):
-    """
-    Allows players to investigate others. Returns False on failure.
-    # TODO: split this function.
-    """
+def investigate_old(bot, update, chat_data=None, args=None):
     if not is_game_ongoing(chat_data):
         bot.send_message(chat_id=update.message.chat_id, text="No game going!")
 
@@ -523,10 +549,8 @@ blame_synonyms = ["blaim", "blame", "blam"]
 # Logistical command handlers.
 start_handler = CommandHandler(start_synonyms, start)
 feedback_handler = CommandHandler('feedback', feedback)
-dm_handler = CommandHandler('send_dm', send_dm)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(feedback_handler)
-dispatcher.add_handler(dm_handler)
 
 # Handlers related to organizing a game.
 newgame_handler = CommandHandler('newgame', new_game)
@@ -534,36 +558,23 @@ joingame_handler = CommandHandler(joingame_synonyms, join_game)
 unjoin_handler = CommandHandler(unjoin_synonyms, unjoin_game)
 spectate_handler = CommandHandler('spectate', spectate)
 startgame_handler = CommandHandler('startgame', start_game)
+endgame_handler = CommandHandler('endgame', end_game)
 dispatcher.add_handler(newgame_handler)
 dispatcher.add_handler(joingame_handler)
 dispatcher.add_handler(unjoin_handler)
 dispatcher.add_handler(spectate_handler)
 dispatcher.add_handler(startgame_handler)
 
-pending_handler = CommandHandler('listplayers', pending_players,
-                                 pass_chat_data=True)
-
-endgame_handler = CommandHandler('endgame', end_game, pass_chat_data=True)
-#dispatcher.add_handler(pending_handler)
-#dispatcher.add_handler(endgame_handler)
-
 # Handlers for in-game commands.
-
-investigate_handler = CommandHandler(investigate_synonyms, investigate,
-                                     pass_chat_data=True, pass_args=True)
-claim_handler = CommandHandler(claim_synonyms, claim, pass_chat_data=True,
-                               pass_args=True)
-blaim_handler = CommandHandler(blame_synonyms, blame, pass_chat_data=True)
-display_handler = CommandHandler("display", display, pass_chat_data=True)
+investigate_handler = CommandHandler(investigate_synonyms, investigate)
+claim_handler = CommandHandler(claim_synonyms, claim)
+blaim_handler = CommandHandler(blame_synonyms, blame)
+display_handler = CommandHandler("display", display)
 dispatcher.add_handler(investigate_handler)
 dispatcher.add_handler(claim_handler)
 dispatcher.add_handler(blaim_handler)
 dispatcher.add_handler(display_handler)
 
-# Handlers for game settings.
-claimsettings_handler = CommandHandler('claimsettings', claimsettings,
-                                     pass_chat_data=True, pass_args=True)
-dispatcher.add_handler(claimsettings_handler)
 
 
 updater.start_polling()

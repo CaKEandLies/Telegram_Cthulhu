@@ -266,7 +266,19 @@ class Player:
         return display
 
     def reveal_card(self, pos=None):
-        pass
+        # Flip a specific card.
+        if pos:
+            if not self.game_data.cards[pos].is_flipped:
+                raise GameError("No card to flip!")
+            else:
+                self.game_data.cards[pos].flip_up()
+                return
+        # Otherwise, just flip the first card.
+        for card in self.game_data.cards:
+            if not card.is_flipped:
+                card.flip_up()
+                return
+        raise GameError("All cards are faceup!")
 
     def toggle_flashlight(self):
         """
@@ -379,9 +391,14 @@ class Game:
 
     def get_current_player(self):
         """Get the current player."""
-        # check which phase.
-        # if claims: see who can claim.
-        # if investigation: see who has light.
+        if self.phase == "Claims":
+            for p in self.get_active_players():
+                if p.game_data.can_claim:
+                    return p
+        elif self.phase == "Investigation":
+            for p in self.get_active_players():
+                if p.game_data.has_flashlight:
+                    return p
 
     def get_next_player(self, player):
         """Get the next active player."""
@@ -454,7 +471,7 @@ class Game:
                     n_cultists = int(role_data[2])
                     got_info = True
         if not got_info:
-            raise GameError("Failed to find a role setup for {} players.").format(self.count_active_players)
+            raise GameError("Failed to find a role setup.")
         # Make a deck of roles and distribute them.
         roles = ["Investigator"] * n_investigators + ["Cultist"] * n_cultists
         random.shuffle(roles)
@@ -475,25 +492,38 @@ class Game:
         """
         pass
 
-    def set_claim(self, player, claim):
+    def set_claim(self, player, blank, elder, cthulhu):
         """
         Sets the claim for a player and updates the game log accordingly.
         """
+        claim = []
+        for i in range(blank):
+            claim.append(Card(ctype="Blank"))
+        for i in range(elder):
+            claim.append(Card(ctype="Elder Sign"))
+        for i in range(cthulhu):
+            claim.append(Card(ctype="Cthulhu"))
         player.set_claim(claim)
-        self.get_next_player(player).game_data.can_claim = True
-        pass
+        if self.phase == "Claims":
+            self.get_next_player(player).game_data.can_claim = True
+            self.new_turn()
 
-    def investigate(self, user, target, pos=0):
+    def investigate(self, user, target, pos=None):
         """
         Has one player investigate another.
         """
-        pass
+        if not user.game_data.has_flashlight:
+            raise GameError("Must have the flashlight to investigate!")
+        user.game_data.has_flashlight = False
+        target.reveal_card(pos=pos)
+        target.game_data.has_flashlight = True
+        self.new_turn()
 
     def new_turn(self):
         """Check for winners, etc."""
         self.check_winner()
         self.turn += 1
-        if self.turn > self.count_active_players:
+        if self.turn > self.count_active_players():
             if self.phase == "Claims":
                 self.new_phase()
             else:
@@ -503,7 +533,7 @@ class Game:
         """Transition from claims to investigations."""
         self.phase = "Investigation"
         self.turn = 1
-        for p in self.get_active_players:
+        for p in self.get_active_players():
             p.game_data.can_claim = True
 
     def new_round(self):
@@ -513,7 +543,7 @@ class Game:
         self.phase = "Claims"
         self.turn = 1
         # Reset player data as needed.
-        for p in self.get_active_players:
+        for p in self.get_active_players():
             # Return cards to deck or discard.
             for card in p.game_data.cards:
                 if card.is_flipped:
@@ -536,7 +566,7 @@ class Game:
         cards_revealed = 0
         signs_found = 0
         # Search through all revealed cards.
-        revealed = [p.game_data.cards for p in self.get_active_players]
+        revealed = [p.game_data.cards for p in self.get_active_players()]
         revealed.append(self.discard)
         for card in itertools.chain(*revealed):
             if card.is_flipped:
@@ -559,10 +589,28 @@ class Game:
         # update player stats
         pass
 
-    def get_position(self, arg):
+    def display_board(self):
         """
+        Returns a nicely formatted version of the board as it is.
         """
-        pass
+        display = ""
+        display += "Round: {}   ".format(self.round_counter)
+        display += "Phase: {}   ".format(self.phase)
+        display += "Turn: {} \n".format(self.turn)
+        for i, player in enumerate(self.get_active_players()):
+            display += str(i + 1)
+            display += " : "
+            display += str(player)
+            if player.game_data.has_flashlight:
+                display += "(" + emojis.encode(":flashlight:") + ")"
+            display += " : "
+            display += player.display_hand()
+            display += "\n"
+            if player.display_claim():
+                display += ("Claimed: %s" % player.display_claim())
+                display += "\n"
+            display += "\n"
+        return display
     ############################
 
     def get_whose_claim(self):
@@ -570,18 +618,6 @@ class Game:
         Returns whose claim it is.
         """
         return self.whose_claim
-
-    def investigators_have_won(self):
-        """
-        Returns whether the investigators have won the game.
-        """
-        return self.signs_remaining < 1
-
-    def cultists_have_won(self):
-        """
-        Returns whether cultists have won this round.
-        """
-        return "C" in self.moves or self.round_number > 4
 
     def is_valid_name(self, name):
         """
@@ -620,7 +656,7 @@ class Game:
         for player in self.players:
             player.set_claim(0, 0, 0)
 
-    def claim(self, pos, blank, elder, cthulhu):
+    def claim_old(self, pos, blank, elder, cthulhu):
         """
         Sets the claim for a player at position pos. Do nothing if disallowed.
 
@@ -642,7 +678,7 @@ class Game:
         if self.whose_claim == self.claim_start:
             self.whose_claim = -1
 
-    def investigate(self, position):
+    def investigate_old(position):
         """
         Investigate the player at position position and return result.
         """
@@ -688,26 +724,7 @@ class Game:
                     print("You can't investigate this player.")
         print("Looks like you entered invalid input. Please try again.")
 
-    def display_board(self):
-        """
-        Returns a nicely formatted version of the board as it is.
-        """
-        display = ""
-        for i, player in enumerate(self.players):
-            display += str(i + 1)
-            display += " : "
-            display += str(player)
-            if self.flashlight == i:
-                display += " (🔦) "
-            display += " : "
-            display += player.display_hand()
-            display += "\n"
-            if player.display_claim():
-                display += ("Claimed: %s" % player.display_claim())
-                display += "\n"
-            display += "\n"
-        display += "Elder Signs remaining: %s" % self.signs_remaining
-        return display
+
 
     def print_board(self):
         """
